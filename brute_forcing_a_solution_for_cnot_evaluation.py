@@ -1,33 +1,34 @@
-#Normally, to brute-force the solution, we would have to find f, g, h, i such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f(a1, a2, b1, b2)·Z^g(a1, a2, b1, b2) ⊗ X^h(a1, a2, b1, b2)·Z^i(a1, a2, b1, b2))CNOT
+#Normally, to brute-force the solution, we would have to find f1, f2, g1, g2 such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f1(a1, a2, b1, b2)·Z^g1(a1, a2, b1, b2) ⊗ X^hf2(a1, a2, b1, b2)·Z^g2(a1, a2, b1, b2))CNOT
 #However, we cannot brute-force the solution by checking every quadruple of functions that take four parameters each.
 #Therefore, we brute-force the solution by checking only quadruples of functions that take two parameters each.
 #That is, we look at the cases where we update a independently of b, and where we update b independently of a.
 #We may miss some solutions, but in that specific case, we get exactly one solution, which is enough.
-#So, we try to find f, g, h, i such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f(a1, a2)·Z^g(b1, b2) ⊗ X^h(a1, a2)·Z^i(b1, b2))CNOT
+#So, we try to find f1, f2, g1, g2 such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f1(a1, a2)·Z^g1(b1, b2) ⊗ X^f2(a1, a2)·Z^g2(b1, b2))CNOT
 import numpy as np
 from numpy import dot, kron
 from numpy.linalg import inv, matrix_power
 import itertools
 
-X = [[0, 1], [1, 0]]
-Z = [[1, 0], [0, -1]]
-CNOT = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]]
+X = np.array([[0, 1], [1, 0]])
+Z = np.array([[1, 0], [0, -1]])
+CNOT = np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0]])
 
 def allBinaryFunctions():
     return [(lambda x, y, array=arr: array[2*x + y]) for arr in itertools.product([0, 1], repeat=4)]
 
-for f, g, h, i in itertools.product(allBinaryFunctions(), repeat=4):
+for f1, f2, g1, g2 in itertools.product(allBinaryFunctions(), repeat=4):
     corresponds = True
-    for a, b in itertools.product(itertools.product([0, 1], repeat=2), repeat=2):
-        wanted = CNOT @ kron(matrix_power(X, a[0]) @ matrix_power(Z, b[0]), matrix_power(X, a[1]) @ matrix_power(Z, b[1]))
-        result = kron(matrix_power(X, f(a[0], a[1])) @ matrix_power(Z, g(b[0], b[1])), matrix_power(X, h(a[0], a[1])) @ matrix_power(Z, i(b[0], b[1]))) @ CNOT
-        corresponds &= np.round(wanted, decimals=2).tolist() == np.round(result, decimals=2).tolist()
+    for a1, a2, b1, b2 in itertools.product([0, 1], repeat=4):
+        corresponds &= np.allclose(
+            CNOT @ kron(matrix_power(X, a1) @ matrix_power(Z, b1), matrix_power(X, a2) @ matrix_power(Z, b2)),
+            kron(matrix_power(X, f1(a1, a2)) @ matrix_power(Z, g1(b1, b2)), matrix_power(X, f2(a1, a2)) @ matrix_power(Z, g2(b1, b2))) @ CNOT
+        )
         if not corresponds:
             break
     
     if corresponds:
         print("Found")
-        print("f :", f(0, 0), f(0, 1), f(1, 0), f(1, 1))
-        print("g :", g(0, 0), g(0, 1), g(1, 0), g(1, 1))
-        print("h :", h(0, 0), h(0, 1), h(1, 0), h(1, 1))
-        print("i :", i(0, 0), i(0, 1), i(1, 0), i(1, 1))
+        print("f1 :", f1(0, 0), f1(0, 1), f1(1, 0), f1(1, 1))
+        print("f2 :", f2(0, 0), f2(0, 1), f2(1, 0), f2(1, 1))
+        print("g1 :", g1(0, 0), g1(0, 1), g1(1, 0), g1(1, 1))
+        print("g2 :", g2(0, 0), g2(0, 1), g2(1, 0), g2(1, 1))
