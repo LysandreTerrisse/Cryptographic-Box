@@ -9,3 +9,5 @@ This repository contains some code that I made in order to implement the symmetr
 - `brute_forcing_a_solution_for_cnot_evaluation.py` is the program that I used in order to find the fix for the CNOT gate. It is different than the previous program because it only partially brute-forces the problem (as otherwise it would suffer from combinatorial explosion). Therefore, although it doesn't give every solution, it finds at least one.
 
 I haven't implemented the fix for the Toffoli gate, as it isn't a Clifford gate and that therefore the scheme cannot work for this program.
+
+I also made a beamer `Fully_Homomorphic_Encryption.pdf` for an english presentation in my university.
