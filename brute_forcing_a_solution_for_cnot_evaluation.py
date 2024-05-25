@@ -1,4 +1,9 @@
-#We want to find f, g, h, i such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f(a1, a2)·Z^g(b1, b2) ⊗ X^h(a1, a2)·Z^i(b1, b2))CNOT
+#Normally, to brute-force the solution, we would have to find f, g, h, i such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f(a1, a2, b1, b2)·Z^g(a1, a2, b1, b2) ⊗ X^h(a1, a2, b1, b2)·Z^i(a1, a2, b1, b2))CNOT
+#However, we cannot brute-force the solution by checking every quadruple of functions that take four parameters each.
+#Therefore, we brute-force the solution by checking only quadruples of functions that take two parameters each.
+#That is, we look at the cases where we update a independently of b, and where we update b independently of a.
+#We may miss some solutions, but in that specific case, we get exactly one solution, which is enough.
+#So, we try to find f, g, h, i such that CNOT(X^a1·Z^b1 ⊗ X^a2·Z^b2) = (X^f(a1, a2)·Z^g(b1, b2) ⊗ X^h(a1, a2)·Z^i(b1, b2))CNOT
 import numpy as np
 from numpy import dot, kron
 from numpy.linalg import inv, matrix_power
