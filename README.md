@@ -12,7 +12,7 @@ This repository contains:
   - `brute_forcing_a_solution_for_cnot_evaluation.py` is the program that I used in order to find the fix for the CNOT gate. It is different than the previous program because it only partially brute-forces the problem (as otherwise it would suffer from combinatorial explosion). Therefore, although it doesn't give every solution, it finds at least one.
   - `Fully_Homomorphic_Encryption.pdf`, which is a beamer that I made for an english presentation at my university.
 - The code of the third post in the folder `MPC`
-  - `mpc.py` is the file in which I implemented the MPC scheme.
+  - `mpc.py` is the file in which I implemented the [MPC scheme made by David Chaum, Claude Crépeau, and Ivan Damgård](https://chaum.com/wp-content/uploads/2021/12/Multiparty_unconditionally_secure_protocols.pdf).
   - `boolean_circuits.py` is a file containing some useful boolean circuits, such as a function `count(table, n)` which tells whether there are exactly `n` variables in `table` that are set to `True`. This can be tedious when implemented as a boolean circuit from just XOR and AND gates.
   - `program1_rule_60.py` uses the MPC scheme to run Rule 60.
   - `program2_rule_110.py` uses the MPC scheme to run Rule 110.
