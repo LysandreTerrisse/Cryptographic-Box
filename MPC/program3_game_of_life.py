@@ -33,27 +33,8 @@ def print_pretty_2D(x):
     sys.stdout.write("\n".join("".join("█" if e else "." for e in row) for row in x))
     sys.stdout.flush()
 
-# Gospel's breeder can be found here (https://conwaylife.com/wiki/Breeder_1) and here (https://conwaylife.com/patterns/breeder1.cells)
-padding_top, padding_right, padding_bottom, padding_left = 10, 100, 10, 10
-with open("breeder1.cells", "r") as fd:
-    # We skip the first four lines and remove the "\n"
-    content = [line.rstrip("\n") for line in fd.readlines()[4:]]
-    
-    # We transform the content into a rectangle (because not all lines have the same width)
-    # We also add padding to the left and to the right
-    maximal_length = max(len(line) for line in content)
-    content = ["." * padding_left + line + "." * (maximal_length - len(line) + padding_right) for line in content]
-    
-    # We add padding to the top and the bottom
-    empty_line = "." * (padding_left + maximal_length + padding_right)
-    content = [empty_line]*padding_top + content + [empty_line]*padding_bottom
-    
-    # We encrypt the boolean array
-    x = encrypt([[e=="O" for e in line] for line in content])
 
-# If this is too big for your computer, consider this grid instead.
-# It is the Gosper Glider Gun (https://conwaylife.com/wiki/Gosper_glider_gun)
-"""
+# This is the Gosper Glider Gun (https://conwaylife.com/wiki/Gosper_glider_gun)
 x = encrypt([
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -79,7 +60,28 @@ x = encrypt([
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ])
+
 """
+# You can uncomment this part in order to load Breeder 1. However, this one is extremely slow and may cause memory errors.
+# Breeder 1 can be found here (https://conwaylife.com/wiki/Breeder_1) and here (https://conwaylife.com/patterns/breeder1.cells)
+padding_top, padding_right, padding_bottom, padding_left = 10, 100, 10, 10
+with open("breeder1.cells", "r") as fd:
+    # We skip the first four lines and remove the "\n"
+    content = [line.rstrip("\n") for line in fd.readlines()[4:]]
+    
+    # We transform the content into a rectangle (because not all lines have the same width)
+    # We also add padding to the left and to the right
+    maximal_length = max(len(line) for line in content)
+    content = ["." * padding_left + line + "." * (maximal_length - len(line) + padding_right) for line in content]
+    
+    # We add padding to the top and the bottom
+    empty_line = "." * (padding_left + maximal_length + padding_right)
+    content = [empty_line]*padding_top + content + [empty_line]*padding_bottom
+    
+    # We encrypt the boolean array
+    x = encrypt([[e=="O" for e in line] for line in content])
+"""
+
 while True:
     x = game_of_life(x)
     print_pretty_2D(decrypt(x))
