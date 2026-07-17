@@ -12,3 +12,9 @@ This repository contains:
   - `brute_forcing_a_solution_for_cnot_evaluation.py` is the program that I used in order to find the fix for the CNOT gate. It is different than the previous program because it only partially brute-forces the problem (as otherwise it would suffer from combinatorial explosion). Therefore, although it doesn't give every solution, it finds at least one.
   - `Fully_Homomorphic_Encryption.pdf`, which is a beamer that I made for an english presentation at my university.
 - The code of the third post in the folder `MPC`
+  - `mpc.py` is the file in which I implemented the MPC scheme.
+  - `boolean_circuits.py` is a file containing some useful boolean circuits, such as a function `count(table, n)` which tells whether there are exactly `n` variables in `table` that are set to `True`. This can be tedious when implemented as a boolean circuit from just XOR and AND gates.
+  - `program1_rule_60.py` uses the MPC scheme to run Rule 60.
+  - `program2_rule_110.py` uses the MPC scheme to run Rule 110.
+  - `program3_game_of_life.py` uses the MPC scheme to run the Game of Life.
+  - `breeder1.cells` is the raw file for a structure in the Game of Life called Breeder 1. This file can also be downloaded [here](https://conwaylife.com/patterns/breeder1.cells). Alternatively, if Breeder 1 is too big, you can comment the code about it and uncomment the part of the code just below in order to run a structure called the [Gosper glider gun](https://conwaylife.com/wiki/Gosper_glider_gun). I recommend using [PyPy](https://pypy.org/download.html) for better performances. 
