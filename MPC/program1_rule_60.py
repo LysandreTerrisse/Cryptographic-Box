@@ -1,6 +1,8 @@
 from mpc import encrypt, decrypt
 
-# Rule 60 is defined as f(x,y,z) = x XOR y
+# Download pypy here (https://pypy.org/download.html) for better performances
+
+# Rule 60's Algebraic Normal Form (ANF) l XOR c
 # It therefore doesn't use AND gates
 def local_rule_60(l, c, r):
     return l ^ c
@@ -14,10 +16,9 @@ def rule_60(x, t=1):
     return x
 
 def print_pretty(x):
-    print("".join("█" if e else " " for e in x))
+    print("".join("O" if e else " " for e in x))
 
-
-x = encrypt([i==2 for i in range(101)])
+x = encrypt([i==1 for i in range(128 + 2)])
 while True:
     print_pretty(decrypt(x))
     x = rule_60(x)
