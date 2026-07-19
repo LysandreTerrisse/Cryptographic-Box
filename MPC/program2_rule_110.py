@@ -1,7 +1,9 @@
 from mpc import encrypt, decrypt
 
-# Rule 110 is defined as f(x,y,z) = (¬x∧y)∨(y∧¬z)∨(¬y∧z).
-# Its Algebraic normal form (ANF) is y XOR z XOR yz XOR xyz, https://atlas.wolfram.com/01/01/110/01_01_1_110.html
+# Download pypy here (https://pypy.org/download.html) for better performances
+
+# Rule 110's Algebraic Normal Form (ANF) is c XOR r XOR cr XOR lcr
+# It can be found at https://atlas.wolfram.com/01/01/110/01_01_1_110.html
 def local_rule_110(l, c, r):
     return c ^ r ^ (c & r) ^ (l & c & r)
 
@@ -14,10 +16,9 @@ def rule_110(x, t=1):
     return x
 
 def print_pretty(x):
-    print("".join("█" if e else " " for e in x))
+    print("".join("O" if e else " " for e in x))
 
-
-x = encrypt([i==99 for i in range(101)])
+x = encrypt([i==128 for i in range(128 + 2)])
 while True:
     print_pretty(decrypt(x))
     x = rule_110(x)
