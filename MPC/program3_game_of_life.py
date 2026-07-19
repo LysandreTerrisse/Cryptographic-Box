@@ -4,8 +4,6 @@ import os
 import sys
 
 # Download pypy here (https://pypy.org/download.html) for better performances
-# To allow unicode characters in Powershell, type "chcp 65001"
-# C:/PyPy/pypy program3_game_of_life.py
 
 # Let n be the number of neighbours
 # The game of life outputs 1 if n=3, 1 if the center is active and n=3, 0 otherwise
@@ -30,9 +28,8 @@ def game_of_life(x, t=1):
 os.system("")
 def print_pretty_2D(x):
     sys.stdout.write("\033[2J\033[H") # clear screen + move cursor home
-    sys.stdout.write("\n".join("".join("█" if e else "." for e in row) for row in x))
+    sys.stdout.write("\n".join("".join("O" if e else "." for e in row) for row in x))
     sys.stdout.flush()
-
 
 # This is the Gosper Glider Gun (https://conwaylife.com/wiki/Gosper_glider_gun)
 x = encrypt([
