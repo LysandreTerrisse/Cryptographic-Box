@@ -19,5 +19,5 @@ def equal(counter, n):
     equal = 1
     for i in range(len(counter)):
         # We compare the i-th bit of the counter with the i-th bit of n
-        equal &= (counter[i] ^ bool((n >> i) & 1)) ^ 1
+        equal &= counter[i] ^ (not ((n >> i) & 1))
     return equal
