@@ -90,7 +90,6 @@ with open("breeder1.cells", "r") as fd:
     x = encrypt([[e=="O" for e in line] for line in content])
 """
 
-from time import sleep
 while True:
     x = game_of_life(x)
     print_pretty_2D(decrypt(x))
