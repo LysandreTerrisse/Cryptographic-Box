@@ -1,5 +1,4 @@
 from mpc import encrypt, decrypt
-from boolean_circuits import *
 import os
 import sys
 
@@ -9,8 +8,21 @@ import sys
 # The game of life outputs 1 if n=3, 1 if the center is active and n=3, 0 otherwise
 # Equivalently, f(c, n) = (n=3) XOR (c & (n=2))
 def local_rule_game_of_life(a, b, c, d, e, f, g, h, i):
-    counter = count([a, b, c, d, f, g, h, i])
-    return equal(counter, 3) ^ (e & equal(counter, 2))
+    # We create a 4-bit counter, least significant bit first
+    # Then, for each neighbour, we increase the counter by 1 if and only if x is true
+    counter = [0] * 4
+    for x in (a, b, c, d, f, g, h, i):
+        carry = x
+        for i in range(4):
+            counter[i], carry = counter[i] ^ carry, counter[i] & carry
+    
+    # We compute whether the counter equals 2 (respectively 3) by comparing the i-th bit of the counter with the i-th bit of 2 (respectively 3)
+    equals2, equals3 = 1, 1
+    for i in range(4):
+        equals2 &= counter[i] ^ (not ((2 >> i) & 1))
+        equals3 &= counter[i] ^ (not ((3 >> i) & 1))
+    
+    return equals3 ^ (e & equals2)
 
 def game_of_life(x, t=1):
     for _ in range(t):
