@@ -2,8 +2,8 @@
 # This function increases the counter by 1 if and only if x is true
 def add_bit(counter, x):
     carry = x
-    for i, bit in enumerate(counter):
-        counter[i], carry = bit ^ carry, bit & carry
+    for i in range(len(counter)):
+        counter[i], carry = counter[i] ^ carry, counter[i] & carry
 
 # bits is a list of encrypted bits
 # Creates a counter and adds every encrypted bit to it
