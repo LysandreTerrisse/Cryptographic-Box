@@ -1,5 +1,5 @@
 from mpc import encrypt, decrypt
-from boolean_circuits import count
+from boolean_circuits import *
 import os
 import sys
 
@@ -9,8 +9,8 @@ import sys
 # The game of life outputs 1 if n=3, 1 if the center is active and n=3, 0 otherwise
 # Equivalently, f(c, n) = (n=3) XOR (c & (n=2))
 def local_rule_game_of_life(a, b, c, d, e, f, g, h, i):
-    neighbours = [a, b, c, d, f, g, h, i]
-    return count(neighbours, 3) ^ (e & count(neighbours, 2))
+    counter = count([a, b, c, d, f, g, h, i])
+    return equal(counter, 3) ^ (e & equal(counter, 2))
 
 def game_of_life(x, t=1):
     for _ in range(t):
@@ -28,7 +28,7 @@ def game_of_life(x, t=1):
 os.system("")
 def print_pretty_2D(x):
     sys.stdout.write("\033[2J\033[H") # clear screen + move cursor home
-    sys.stdout.write("\n".join("".join("O" if e else "." for e in row) for row in x))
+    sys.stdout.write("\n".join("".join("O" if e else " " for e in row) for row in x))
     sys.stdout.flush()
 
 # This is the Gosper Glider Gun (https://conwaylife.com/wiki/Gosper_glider_gun)
