@@ -38,8 +38,9 @@ def game_of_life(x, t=1):
     return x
 
 os.system("")
+sys.stdout.write("\033[2J\033[H")
 def print_pretty_2D(x):
-    sys.stdout.write("\033[2J\033[H") # clear screen + move cursor home
+    sys.stdout.write("\033[H") # clear screen + move cursor home
     sys.stdout.write("\n".join("".join("O" if e else " " for e in row) for row in x))
     sys.stdout.flush()
 
