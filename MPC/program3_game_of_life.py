@@ -16,13 +16,8 @@ def local_rule_game_of_life(a, b, c, d, e, f, g, h, i):
         for i in range(4):
             counter[i], carry = counter[i] ^ carry, counter[i] & carry
     
-    # We compute whether the counter equals 2 (respectively 3) by comparing the i-th bit of the counter with the i-th bit of 2 (respectively 3)
-    equals2, equals3 = 1, 1
-    for i in range(4):
-        equals2 &= counter[i] ^ (not ((2 >> i) & 1))
-        equals3 &= counter[i] ^ (not ((3 >> i) & 1))
-    
-    return equals3 ^ (e & equals2)
+    # We verify that the counter has the form 0b001X, and that the last bit X respects (X | e)==True
+    return (counter[3] ^ 1) & (counter[2] ^ 1) & counter[1] & (counter[0] | e)
 
 def game_of_life(x, t=1):
     for _ in range(t):
