@@ -1,17 +1,11 @@
-# Takes a counter, that is, a list of bits, least significant bit first
-# This function increases the counter by 1 if and only if x is true
-def add_bit(counter, x):
-    carry = x
-    for i in range(len(counter)):
-        counter[i], carry = counter[i] ^ carry, counter[i] & carry
-
-# bits is a list of encrypted bits
-# Creates a counter and adds every encrypted bit to it
+# Creates a counter, that is, a list of bits, least significant bit first
+# Then, for each bit, we increase the counter by 1 if and only if x is true
 def count(bits):
-    counter_size = len(bits).bit_length()
-    counter = [0]*counter_size
+    counter = [0] * (len(bits).bit_length())
     for x in bits:
-        add_bit(counter, x)
+        carry = x
+        for i in range(len(counter)):
+            counter[i], carry = counter[i] ^ carry, counter[i] & carry
     return counter
 
 # Compares a counter to an integer
