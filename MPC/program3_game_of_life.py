@@ -10,11 +10,14 @@ import sys
 def local_rule_game_of_life(a, b, c, d, e, f, g, h, i):
     # We create a 4-bit counter, least significant bit first
     # Then, for each neighbour, we increase the counter by 1 if and only if x is true
+    # Note that, for the first bit we add, we don't need to cover all the counter
+    # Instead, for neighbours[i], we only need to cover the depths[i] first bits of the counter
     counter = [0] * 4
-    for x in (a, b, c, d, f, g, h, i):
-        carry = x
-        for i in range(4):
+    neighbours = (a, b, c, d, f, g, h, i)
+    for carry, nb_bits_to_cover in zip(neighbours, (1, 2, 2, 3, 3, 3, 3, 4)):
+        for i in range(nb_bits_to_cover - 1):
             counter[i], carry = counter[i] ^ carry, counter[i] & carry
+        counter[nb_bits_to_cover-1] ^= carry
     
     # We verify that the counter has the form 0b001X, and that the last bit X respects (X | e)==True
     return (counter[3] ^ 1) & (counter[2] ^ 1) & counter[1] & (counter[0] | e)
@@ -87,6 +90,7 @@ with open("breeder1.cells", "r") as fd:
     x = encrypt([[e=="O" for e in line] for line in content])
 """
 
+from time import sleep
 while True:
     x = game_of_life(x)
     print_pretty_2D(decrypt(x))
