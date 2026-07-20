@@ -1,13 +1,5 @@
 from random import getrandbits
 
-# Alice, Bob and Charlie have points.
-# They store their points in lists.
-# Their lists always have the same lengths.
-# The shares for Alice, Bob, and Charlie correspond to the same polynomial iff they are stored at the same index in their lists.
-alice = []
-bob = []
-charlie = []
-
 ZERO, ONE, ALPHA, ONE_PLUS_ALPHA = 0, 1, 2, 3
 
 mul_GF = (
@@ -17,44 +9,34 @@ mul_GF = (
     (ZERO, ONE_PLUS_ALPHA, ONE, ALPHA)
 )
 
-# This is the class for indexes.
-class Index:
-    __slots__ = ("i",) # for optimization
+class EncryptedBit:
+    __slots__ = ("share_alice", "share_bob", "share_charlie") # for optimization
     
-    def __init__(self, i):
-        self.i = i # index
+    def __init__(self, share_alice, share_bob, share_charlie):
+        self.share_alice = share_alice
+        self.share_bob = share_bob
+        self.share_charlie = share_charlie
     
     # xor between p and q
     def __xor__(self, q):
-        # If q isn't an Index, then it is a constant, and thus the addition is trivial:
-        if not isinstance(q, Index):
-            alice.append(alice[self.i] ^ q)
-            bob.append(bob[self.i] ^ q)
-            charlie.append(charlie[self.i] ^ q)
-            return Index(len(alice)-1)
+        # If q isn't an EncryptedBit, then it is a constant, and thus the addition is trivial:
+        if not isinstance(q, EncryptedBit):
+            return EncryptedBit(self.share_alice ^ q, self.share_bob ^ q, self.share_charlie ^ q)
         
         # Alice, Bob, and Charlie each add their two shares for p and q together. They obtain new shares for the polynomial p + q
         # Note that addition in GF(4) corresponds to bitwize XOR in {0, 1, 2, 3}
-        alice.append(alice[self.i] ^ alice[q.i])
-        bob.append(bob[self.i] ^ bob[q.i])
-        charlie.append(charlie[self.i] ^ charlie[q.i])
-        
-        # We output the index where Alice, Bob, and Charlie stored the new shares (it is the same index for the three)
-        return Index(len(alice)-1)
+        return EncryptedBit(self.share_alice ^ q.share_alice, self.share_bob ^ q.share_bob, self.share_charlie ^ q.share_charlie)
     
     # and between p and q
     def __and__(self, q):
-        # If q isn't an Index, then it is a constant, and thus the multiplication is trivial:
-        if not isinstance(q, Index):
-            alice.append(mul_GF[alice[self.i]][q])
-            bob.append(mul_GF[bob[self.i]][q])
-            charlie.append(mul_GF[charlie[self.i]][q])
-            return Index(len(alice)-1)
+        # If q isn't an EncryptedBit, then it is a constant, and thus the multiplication is trivial:
+        if not isinstance(q, EncryptedBit):
+            return EncryptedBit(mul_GF[self.share_alice][q], mul_GF[self.share_bob][q], mul_GF[self.share_charlie][q])
         
         # Alice, Bob, and Charlie each multiply their two shares for p and q together. They obtain new shares
-        share_alice_of_p_times_q   = mul_GF[alice[self.i]][alice[q.i]]
-        share_bob_of_p_times_q     = mul_GF[bob[self.i]][bob[q.i]]
-        share_charlie_of_p_times_q = mul_GF[charlie[self.i]][charlie[q.i]]
+        share_alice_of_p_times_q   = mul_GF[self.share_alice][q.share_alice]
+        share_bob_of_p_times_q     = mul_GF[self.share_bob][q.share_bob]
+        share_charlie_of_p_times_q = mul_GF[self.share_charlie][q.share_charlie]
         
         # But the shares correspond to a polynomial of degree 2 rather than one
         
@@ -135,12 +117,7 @@ class Index:
         
         # Now, they compute the polynomial v - g
         # Note that the y-intercept of this new polynomial is f(0) + (p * q) - g(0) = p * q
-        alice.append(v ^ share_alice_of_g)
-        bob.append(v ^ share_bob_of_g)
-        charlie.append(v ^ share_charlie_of_g)
-        
-        # We output the index where Alice, Bob, and Charlie stored the new shares (it is the same index for the three)
-        return Index(len(alice)-1)
+        return EncryptedBit(v ^ share_alice_of_g, v ^ share_bob_of_g, v ^ share_charlie_of_g)
     
     def __or__(self, b):
         return (self ^ b) ^ (self & b)
@@ -154,35 +131,30 @@ class Index:
     def __ror__(self, b):
         return self | b
 
-# This function outputs elements of the class Index (or lists of them).
+# This function outputs elements of the class EncryptedBit (or lists of them).
 def encrypt(x, base=2):
     # Case where it is a list
     if isinstance(x, list):
         return [encrypt(e, base) for e in x]
     
     # Case where it is already encrypted
-    if isinstance(x, Index):
+    if isinstance(x, EncryptedBit):
         return x
     
     # We create a random polynomial whose y-intercept is the secret x
     a, b = getrandbits(2), x
     
-    # We generate three shares and distribute them to Alice, Bob, and Charlie
-    alice.append(mul_GF[a][ONE] ^ b)
-    bob.append(mul_GF[a][ALPHA] ^ b)
-    charlie.append(mul_GF[a][ONE_PLUS_ALPHA] ^ b)
+    # We generate shares and distribute them to Alice, Bob, and Charlie
+    return EncryptedBit(mul_GF[a][ONE] ^ b, mul_GF[a][ALPHA] ^ b, mul_GF[a][ONE_PLUS_ALPHA] ^ b)
     
-    # We output the index where Alice, Bob, and Charlie stored their shares (it is the same index for the three)
-    return Index(len(alice)-1)
-    
-def decrypt(index):
+def decrypt(x):
     # Case where it is a list:
-    if isinstance(index, list):
-        return [decrypt(e) for e in index]
+    if isinstance(x, list):
+        return [decrypt(e) for e in x]
     
     # Case where it is already decrypted
-    if not isinstance(index, Index):
-        return index
+    if not isinstance(x, EncryptedBit):
+        return x
 
     # We have the shares of a polynomial p(x) = ax + b of degree 1
     # Alice has p(1), Bob has p(α), and Charlie has p(α+1)
@@ -193,4 +165,4 @@ def decrypt(index):
     # From α^3 = 1, we get that α² * α = 1, and therefore α = 1 / α² = 1/(1 + α)
     # Therefore, p(0) = p(1) + (p(1) + p(α))/(1 + α) = p(1) + α(p(1) + p(α)) = p(1) + αp(1) + αp(α) = (1 + α)p(1) + αf(α)
     # We therefore have to return p(0) = (1 + α)p(1) + αf(α)
-    return mul_GF[ONE_PLUS_ALPHA][alice[index.i]] ^ mul_GF[ALPHA][bob[index.i]]
+    return mul_GF[ONE_PLUS_ALPHA][x.share_alice] ^ mul_GF[ALPHA][x.share_bob]
