@@ -3,10 +3,10 @@ from random import getrandbits
 ZERO, ONE, ALPHA, ONE_PLUS_ALPHA = 0, 1, 2, 3
 
 mul = (
-    (ZERO, ZERO, ZERO, ZERO),
-    (ZERO, ONE, ALPHA, ONE_PLUS_ALPHA),
-    (ZERO, ALPHA, ONE_PLUS_ALPHA, ONE),
-    (ZERO, ONE_PLUS_ALPHA, ONE, ALPHA)
+    ZERO, ZERO, ZERO, ZERO,
+    ZERO, ONE, ALPHA, ONE_PLUS_ALPHA,
+    ZERO, ALPHA, ONE_PLUS_ALPHA, ONE,
+    ZERO, ONE_PLUS_ALPHA, ONE, ALPHA
 )
 
 mul_by_alpha          = (ZERO, ALPHA, ONE_PLUS_ALPHA, ONE)
@@ -33,13 +33,14 @@ class EncryptedBit:
     # and between p and q
     def __and__(self, q):
         # If q isn't an EncryptedBit, then it is a constant, and thus the multiplication is trivial:
+        # Note that accessing a 2D list by doing T[a][b] is equivalent to accessing a 1D list by doing T[(a << 2) | b]
         if not isinstance(q, EncryptedBit):
-            return EncryptedBit(mul[self.share_alice][q], mul[self.share_bob][q], mul[self.share_charlie][q])
+            return EncryptedBit(mul[(self.share_alice << 2) | q], mul[(self.share_bob << 2) | q], mul[(self.share_charlie << 2) | q])
         
         # Alice, Bob, and Charlie each multiply their two shares for p and q together. They obtain new shares
-        share_alice_of_p_times_q   = mul[self.share_alice][q.share_alice]
-        share_bob_of_p_times_q     = mul[self.share_bob][q.share_bob]
-        share_charlie_of_p_times_q = mul[self.share_charlie][q.share_charlie]
+        share_alice_of_p_times_q   = mul[(self.share_alice << 2) | q.share_alice]
+        share_bob_of_p_times_q     = mul[(self.share_bob << 2) | q.share_bob]
+        share_charlie_of_p_times_q = mul[(self.share_charlie << 2) | q.share_charlie]
         
         # But the shares correspond to a polynomial of degree 2 rather than one
         # Alice, Bob, and Charlie therefore generate six bits each (or three GF(4) elements)
