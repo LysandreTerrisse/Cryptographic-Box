@@ -9,7 +9,6 @@ The goal of this project is to create a program that would enable us to run infi
   - `Fully_Homomorphic_Encryption.pdf`, which is a beamer that I made for an english presentation at my university.
 - The code of the third post in the folder `MPC`
   - `mpc.py` is the file in which I implemented the [MPC scheme made by David Chaum, Claude Crépeau, and Ivan Damgård](https://chaum.com/wp-content/uploads/2021/12/Multiparty_unconditionally_secure_protocols.pdf).
-  - `boolean_circuits.py` is a file containing some useful boolean circuits, such as a function `count(table, n)` which tells whether there are exactly `n` variables in `table` that are set to `True`. This can be tedious when implemented as a boolean circuit from just XOR and AND gates.
   - `program1_rule_60.py` uses the MPC scheme to run Rule 60.
   - `program2_rule_110.py` uses the MPC scheme to run Rule 110.
   - `program3_game_of_life.py` uses the MPC scheme to run the Game of Life. By default, the grid it works on contains a structure called the [Gosper glider gun](https://conwaylife.com/wiki/Gosper_glider_gun). Alternatively, if you want to crash your computer, you can uncomment a section in the code in order to run a structure called [Breeder 1](https://conwaylife.com/wiki/Breeder_1), which generates Gosper Glider Guns while moving forward. I recommend using [PyPy](https://pypy.org/download.html) for better performances.
