@@ -7,43 +7,49 @@ def get_transition_table(code):
         row = []
         for i in range(0, len(state_code), 3):
             next_symbol, direction, next_state = state_code[i:i+3]
-            row.append(((int(next_symbol)), (-1 if direction=="L" else 1), ord(next_state) - ord("A")))
+            row.append((int(next_symbol), direction=="R", ord(next_state) - ord("A")))
         table.append(row)
     return table
 
 def local_rule(table, l, c, r):
     """Each n-state 2-symbol TM can be converted to a cellular automaton of (2n + 2) states.
     If the TM has states {A, B, C} and symbols {0, 1}, then the states of the cells are {0, 0A, 0B, 0C, 1, 1A, 1B, 1C}.
-    For us, the value of each cell will be a tuple (state, symbol), where state belongs to the set {A, B, ...} union {not_here}
-    We will encode the states {not_here, A, B, ...} as {-1, 0, 1, 2, ...}."""
-    (state_l, symbol_l), (state_c, symbol_c), (state_r, symbol_r) = l, c, r
+    For us, the value of each cell will be encoded as a sequence v of bits.
+    The first LSB (that is, v & 1) will indicate whether the head is here.
+    The next LSB (that is, v & 2) will encode the symbol of the tape (here binary).
+    The next bits will encode the state of the TM.
+    """
+    
+    head_here_l, symbol_l, state_l = l & 1, (l & 2) >> 1, l >> 2
+    head_here_c, symbol_c, state_c = c & 1, (c & 2) >> 1, c >> 2
+    head_here_r, symbol_r, state_r = r & 1, (r & 2) >> 1, r >> 2
     
     # If the head is at the left
-    if state_l != -1:
-        # If the head moves towards the center
-        if table[state_l][symbol_l][1] == +1:
-            # The symbol is the same but the head is here and has the new state
-            return (table[state_l][symbol_l][2], symbol_c)
+    if head_here_l:
+        # If the head is headed to the right (that is, it goes to the center)
+        if table[state_l][symbol_l][1]:
+            # The head is here, the symbol is the same, and the state is the new state
+            return 1 | (symbol_c << 1) | (table[state_l][symbol_l][2] << 2)
         else:
             return c
     # If the head is at the center
-    elif state_c != -1:
+    elif head_here_c:
         # The head is no longer here and the symbol is the new symbol
-        return (-1, table[state_c][symbol_c][0])
+        return table[state_c][symbol_c][0] << 1
     # If the head is at the right
-    elif state_r != -1:
-        # If the head moves towards the center
-        if table[state_r][symbol_r][1] == -1:
-            # The symbol is the same but the head is here and has the new state
-            return (table[state_r][symbol_r][2], symbol_c)
+    elif head_here_r:
+        # If the head is headed to the left (that is, it goes to the center)
+        if table[state_r][symbol_r][1] ^ 1:
+            # The head is here, the symbol is the same, and the state is the new state
+            return 1 | (symbol_c << 1) | (table[state_r][symbol_r][2] << 2)
         else:
             return c
     else:
         return c
     
 
-tape = [(-1, 0) for _ in range(30000)]
-tape[30000//2] = (0, 0)
+tape = [0 for _ in range(30000)]#range(80)]#
+tape[len(tape)//2] = 1 # We set the LSB to 1 to tell that the head is here
 
 code = "1RB1LB_1LA1RZ"
 code = "1RB1RZ_1LB0RC_1LC1LA"
@@ -52,11 +58,15 @@ code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
 table = get_transition_table(code)
 i = 0
 t0 = time()
-while all(state < len(table) for (state, _) in tape):
+while all((v>>2) < len(table) for v in tape): # While no state is an halting state
+    #print("".join([str((v&2) >> 1) for v in tape]))
     i += 1
     if i%1000==0:
         print(i)
-    tape = [(-1, 0)] + [local_rule(table, tape[j-1], tape[j], tape[j+1]) for j in range(1, len(tape)-1)] + [(-1, 0)]
+    y = [0]*len(tape)
+    for j in range(1, len(tape)-1):
+        y[j] = local_rule(table, tape[j-1], tape[j], tape[j+1])
+    tape = y
 t1 = time()
 print(t1 - t0)
 print(i)
