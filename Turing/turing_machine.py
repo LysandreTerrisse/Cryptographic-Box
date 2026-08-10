@@ -11,6 +11,18 @@ def get_transition_table(code):
         table.append(row)
     return table
 
+# Takes a bit b and duplicates it nb_bits times
+def mask(b, nb_bits=32):
+    res = 0
+    for i in range(nb_bits):
+        res |= b << i
+    return res
+
+# Takes a boolean and two sequences
+def if_then_else(b, seq1, seq2):
+    mask_b = mask(b)
+    return (seq1 & mask_b) ^ (seq2 & ~mask_b)
+
 def local_rule(table, l, c, r):
     """Each n-state 2-symbol TM can be converted to a cellular automaton of (2n + 2) states.
     If the TM has states {A, B, C} and symbols {0, 1}, then the states of the cells are {0, 0A, 0B, 0C, 1, 1A, 1B, 1C}.
@@ -26,24 +38,24 @@ def local_rule(table, l, c, r):
     
     # If the head is at the left
     if head_here_l:
-        # If the head is headed to the right (that is, it goes to the center)
-        if table[state_l][symbol_l][1]:
-            # The head is here, the symbol is the same, and the state is the new state
-            return 1 | (symbol_c << 1) | (table[state_l][symbol_l][2] << 2)
-        else:
-            return c
+        # If the head is headed to the right, then the head is here, the symbol is the same, and the state is the new state
+        return if_then_else(
+            table[state_l][symbol_l][1],
+            1 | (symbol_c << 1) | (table[state_l][symbol_l][2] << 2),
+            c
+        )
     # If the head is at the center
     elif head_here_c:
         # The head is no longer here and the symbol is the new symbol
         return table[state_c][symbol_c][0] << 1
     # If the head is at the right
     elif head_here_r:
-        # If the head is headed to the left (that is, it goes to the center)
-        if table[state_r][symbol_r][1] ^ 1:
-            # The head is here, the symbol is the same, and the state is the new state
-            return 1 | (symbol_c << 1) | (table[state_r][symbol_r][2] << 2)
-        else:
-            return c
+        # If the head is headed to the left, then the head is here, the symbol is the same, and the state is the new state
+        return if_then_else(
+            table[state_r][symbol_r][1],
+            c,
+            1 | (symbol_c << 1) | (table[state_r][symbol_r][2] << 2)
+        )
     else:
         return c
     
@@ -54,7 +66,7 @@ tape[len(tape)//2] = 1 # We set the LSB to 1 to tell that the head is here
 code = "1RB1LB_1LA1RZ"
 code = "1RB1RZ_1LB0RC_1LC1LA"
 code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA"
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
 table = get_transition_table(code)
 i = 0
 t0 = time()
