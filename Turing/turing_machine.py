@@ -31,33 +31,31 @@ def local_rule(table, l, c, r):
     The next LSB (that is, v & 2) will encode the symbol of the tape (here binary).
     The next bits will encode the state of the TM.
     """
-    
     head_here_l, symbol_l, state_l = l & 1, (l & 2) >> 1, l >> 2
     head_here_c, symbol_c, state_c = c & 1, (c & 2) >> 1, c >> 2
     head_here_r, symbol_r, state_r = r & 1, (r & 2) >> 1, r >> 2
     
     # If the head is at the left
-    if head_here_l:
+    return if_then_else(head_here_l,
         # If the head is headed to the right, then the head is here, the symbol is the same, and the state is the new state
-        return if_then_else(
+        if_then_else(
             table[state_l][symbol_l][1],
             1 | (symbol_c << 1) | (table[state_l][symbol_l][2] << 2),
             c
-        )
+        ),
     # If the head is at the center
-    elif head_here_c:
-        # The head is no longer here and the symbol is the new symbol
-        return table[state_c][symbol_c][0] << 1
+    if_then_else(head_here_c,
+        table[state_c][symbol_c][0] << 1,
     # If the head is at the right
-    elif head_here_r:
+    if_then_else(head_here_r,
         # If the head is headed to the left, then the head is here, the symbol is the same, and the state is the new state
-        return if_then_else(
+        if_then_else(
             table[state_r][symbol_r][1],
             c,
             1 | (symbol_c << 1) | (table[state_r][symbol_r][2] << 2)
-        )
-    else:
-        return c
+        ),
+        c
+    )))
     
 
 tape = [0 for _ in range(30000)]#range(80)]#
