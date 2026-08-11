@@ -91,13 +91,13 @@ def phase(j):
         expand(j)
 
 def rotate(begin, end, amount, direction):
-    assert 0 <= begin < end < len(tape)
     length = end - begin + 1
-    amount %= length
-    if direction:  # right
-        tape[begin:end + 1] = tape[begin:end + 1][-amount:] + tape[begin:end + 1][:-amount]
-    else:          # left
-        tape[begin:end + 1] = tape[begin:end + 1][amount:] + tape[begin:end + 1][:amount]
+    # Compute both possible rotations.
+    left = [tape[begin + (i + amount) % length] for i in range(length)]
+    right = [tape[begin + (i - amount) % length] for i in range(length)]
+    one_minus_direction = direction ^ 1
+    rotated = [one_minus_direction * left[i] + direction * right[i] for i in range(length)]
+    tape[begin:end + 1] = rotated
 
 def compress(j):
     # The origin is at len(tape)//2
@@ -132,7 +132,7 @@ stack = []
 code = "1RB1LB_1LA1RZ"
 code = "1RB1RZ_1LB0RC_1LC1LA"
 code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA"
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
 table = get_transition_table(code)
 
 number_steps = 0
