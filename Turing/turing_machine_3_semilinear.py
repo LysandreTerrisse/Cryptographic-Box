@@ -39,9 +39,9 @@ def local_rule(table, l, c, r):
     new_symbol_c, direction_c, new_state_c = table[state_c][symbol_c]
     new_symbol_r, direction_r, new_state_r = table[state_r][symbol_r]
 
-    res_from_left = 1 | (symbol_c << 1) | (new_state_l << 2)
+    res_from_left = 1 ^ (symbol_c << 1) ^ (new_state_l << 2)
     res_from_center = new_symbol_c << 1
-    res_from_right = 1 | (symbol_c << 1) | (new_state_r << 2)
+    res_from_right = 1 ^ (symbol_c << 1) ^ (new_state_r << 2)
 
     res = c
     res = if_then_else(head_r & ~direction_r, res_from_right, res)
@@ -90,39 +90,43 @@ def phase(j):
         expand(j)
         expand(j)
 
-def rotate(begin, end, amount, direction):
+def rotate(begin, end, amount, is_left, is_right, is_center):
     length = end - begin + 1
-    # Compute both possible rotations.
+    # We compute the three possible rotations
     left = [tape[begin + (i + amount) % length] for i in range(length)]
     right = [tape[begin + (i - amount) % length] for i in range(length)]
-    one_minus_direction = direction ^ 1
-    rotated = [one_minus_direction * left[i] + direction * right[i] for i in range(length)]
-    tape[begin:end + 1] = rotated
+    center = tape[begin:end + 1]
+    # We mask the (in)correct ones
+    # We perform the left rotation if the head is to the right
+    # We perform the right rotation if the head is to the left
+    # We perform no rotation if the head is to the center
+    mask_left = mask(is_right)
+    mask_right = mask(is_left)
+    mask_center = mask(is_center)
+    tape[begin:end + 1] = [(mask_left & left[i]) ^ (mask_right & right[i]) ^ (mask_center & center[i]) for i in range(length)]
 
 def compress(j):
     # The origin is at len(tape)//2
     origin = len(tape)//2
-    # We find whether the head is to the right or to the left
+    # We find whether the head is to the right or to the left or to the origin.
     is_right = 0
     for i in range(origin + 1, len(tape)):
         is_right |= tape[i] & 1
-    # In the special case where the head is at the origin, we do nothing
-    if tape[len(tape)//2] & 1:
-        stack.append(None)
-    else:
-        # We consider the cells in a 2^(j+1) - 1 radius around the origin
-        # We do a 2^(j-1)-shift towards the direction where the head isn't.
-        rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), direction = is_right ^ 1)
-        stack.append(is_right ^ 1)
+    is_center = tape[origin] & 1
+    is_left = (is_center ^ 1) & (is_right ^ 1)
+    # We consider the cells in a 2^(j+1) - 1 radius around the origin
+    # We do a 2^(j-1)-shift towards the direction where the head isn't.
+    # In the case where the head is at the origin, we do nothing
+    rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=is_left, is_right=is_right, is_center=is_center)
+    # We add a note to the stack that tells the position where the head was
+    stack.append((is_left, is_right, is_center))
 
 def expand(j):
     # We get the note
-    direction = stack.pop()
-    # In the special case where the head is at the origin, we do nothing
-    if direction!=None:
-        # We do the opposite direction
-        origin = len(tape)//2
-        rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), direction = direction ^ 1)
+    (was_left, was_right, was_center) = stack.pop()
+    # We do the opposite direction
+    origin = len(tape)//2
+    rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=was_right, is_right=was_left, is_center=was_center)
 
 tape = [0 for _ in range(2**7 - 1)]#range(30000)]
 tape[len(tape)//2] = 1 # We set the LSB to 1 to tell that the head is here
@@ -132,7 +136,7 @@ stack = []
 code = "1RB1LB_1LA1RZ"
 code = "1RB1RZ_1LB0RC_1LC1LA"
 code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA"
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
 table = get_transition_table(code)
 
 number_steps = 0
