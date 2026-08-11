@@ -26,23 +26,25 @@ def if_then_else(b, seq1, seq2):
 def local_rule(table, l, c, r):
     """Each n-state 2-symbol TM can be converted to a cellular automaton of (2n + 2) states.
     If the TM has states {A, B, C} and symbols {0, 1}, then the states of the cells are {0, 0A, 0B, 0C, 1, 1A, 1B, 1C}.
-    For us, the value of each cell will be encoded as a sequence v of bits.
-    The first LSB (that is, v & 1) will indicate whether the head is here.
-    The next LSB (that is, (v >> 1) & 1) will encode the symbol of the tape (here binary).
-    The next bits (v >> 2) will encode the state of the TM.
+    For us, the value of each cell will be a tuple (symbol, head_here, state_of_head)
+    The first indicates the symbol (int)
+    The second indicates whether the head is here (boolean)
+    The third indicates the state of the head (int)
     """
+    #symbol_l, head_l, state_l = l
+    #symbol_c, head_c, state_c = c
+    #symbol_r, head_r, state_r = r
     head_l, symbol_l, state_l = l & 1, (l >> 1) & 1, l >> 2
     head_c, symbol_c, state_c = c & 1, (c >> 1) & 1, c >> 2
     head_r, symbol_r, state_r = r & 1, (r >> 1) & 1, r >> 2
-    
-    direction_l, new_state_l = 0, 0
-    new_symbol_c = 0
-    direction_r, new_state_r = 0, 0
     
     # The two following for loop are equivalent to:
     # new_symbol_l, direction_l, new_state_l = table[state_l][symbol_l]
     # new_symbol_c, direction_c, new_state_c = table[state_c][symbol_c]
     # new_symbol_r, direction_r, new_state_r = table[state_r][symbol_r]
+    direction_l, new_state_l = 0, 0
+    new_symbol_c = 0
+    direction_r, new_state_r = 0, 0
     for state in range(len(table)):
         for symbol in range(len(table[0])):
             new_symbol, direction, new_state = table[state][symbol]
@@ -55,14 +57,22 @@ def local_rule(table, l, c, r):
             direction_r = if_then_else(state==state_r and symbol==symbol_r, direction, direction_r)
             new_state_r = if_then_else(state==state_r and symbol==symbol_r, new_state, new_state_r)
     
-    res_from_left = 1 ^ (symbol_c << 1) ^ (new_state_l << 2)
-    res_from_center = new_symbol_c << 1
-    res_from_right = 1 ^ (symbol_c << 1) ^ (new_state_r << 2)
-
-    res = c
-    res = if_then_else(head_r & ~direction_r, res_from_right, res)
-    res = if_then_else(head_c, res_from_center, res)
-    res = if_then_else(head_l & direction_l, res_from_left, res)
+    # The new symbol is:
+    # - the new symbol of the center (new_symbol_c) if the head is at the center (head_c)
+    # - the symbol of the center (symbol_c) otherwise
+    new_symbol = if_then_else(head_c, new_symbol_c, symbol_c)
+    
+    # The new head_here is true if and only if one of the clauses is met (OR and XOR work):
+    # - The head is at the left and goes to the right (head_l & direction_l)
+    # - The head is at the right and goes to the left (head_r & (direction_r ^ 1))
+    new_head = (head_l & direction_l) ^ (head_r & (direction_r ^ 1))
+    
+    # The new state of the head is:
+    # - the new state of the left cell (new_state_l) if the head is at the left (head_l)
+    # - the new state of the right cell (new_state_r) otherwise
+    new_state = if_then_else(head_l, new_state_l, new_state_r)
+    
+    res = new_head ^ (new_symbol << 1) ^ (new_state << 2)
 
     return res
 
@@ -158,7 +168,7 @@ table = get_transition_table(code)
 number_steps = 0
 j = 0
 t0 = time()
-while all((v>>2) < len(table) for v in tape): # While no state is an halting state
+while all(not((v>>2) >= len(table) and (v&1)) for v in tape): # While no state is an halting state
     #print("".join([str((v&2) >> 1) for v in tape]))
     phase(j)
     j += 1
