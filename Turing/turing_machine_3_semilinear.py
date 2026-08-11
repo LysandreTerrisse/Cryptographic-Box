@@ -31,14 +31,30 @@ def local_rule(table, l, c, r):
     The next LSB (that is, (v >> 1) & 1) will encode the symbol of the tape (here binary).
     The next bits (v >> 2) will encode the state of the TM.
     """
-    head_l, symbol_l, state_l = l & 1, (l >> 1) & 1 , l >> 2
+    head_l, symbol_l, state_l = l & 1, (l >> 1) & 1, l >> 2
     head_c, symbol_c, state_c = c & 1, (c >> 1) & 1, c >> 2
     head_r, symbol_r, state_r = r & 1, (r >> 1) & 1, r >> 2
-
-    new_symbol_l, direction_l, new_state_l = table[state_l][symbol_l]
-    new_symbol_c, direction_c, new_state_c = table[state_c][symbol_c]
-    new_symbol_r, direction_r, new_state_r = table[state_r][symbol_r]
-
+    
+    direction_l, new_state_l = 0, 0
+    new_symbol_c = 0
+    direction_r, new_state_r = 0, 0
+    
+    # The two following for loop are equivalent to:
+    # new_symbol_l, direction_l, new_state_l = table[state_l][symbol_l]
+    # new_symbol_c, direction_c, new_state_c = table[state_c][symbol_c]
+    # new_symbol_r, direction_r, new_state_r = table[state_r][symbol_r]
+    for state in range(len(table)):
+        for symbol in range(len(table[0])):
+            new_symbol, direction, new_state = table[state][symbol]
+            
+            direction_l = if_then_else(state==state_l and symbol==symbol_l, direction, direction_l)
+            new_state_l = if_then_else(state==state_l and symbol==symbol_l, new_state, new_state_l)
+            
+            new_symbol_c = if_then_else(state==state_c and symbol==symbol_c, new_symbol, new_symbol_c)
+            
+            direction_r = if_then_else(state==state_r and symbol==symbol_r, direction, direction_r)
+            new_state_r = if_then_else(state==state_r and symbol==symbol_r, new_state, new_state_r)
+    
     res_from_left = 1 ^ (symbol_c << 1) ^ (new_state_l << 2)
     res_from_center = new_symbol_c << 1
     res_from_right = 1 ^ (symbol_c << 1) ^ (new_state_r << 2)
