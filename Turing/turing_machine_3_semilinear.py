@@ -31,30 +31,40 @@ def local_rule(table, l, c, r):
     For us, the value of each cell will be a tuple (symbol, head_here, state_of_head)
     The first indicates the symbol (int)
     The second indicates whether the head is here (boolean)
-    The third indicates the state of the head (int)
-    """
+    The third indicates the state of the head (int)"""
+    
     head_l, symbol_l, state_l = l & 1, (l >> 1) & 1, l >> 2
     head_c, symbol_c, state_c = c & 1, (c >> 1) & 1, c >> 2
     head_r, symbol_r, state_r = r & 1, (r >> 1) & 1, r >> 2
+
+    direction_l = 0
+    new_state_l = 0
+    new_symbol_c = 0
+    direction_r = 0
+    new_state_r = 0
     
     # The two following for loop are equivalent to:
-    # new_symbol_l, direction_l, new_state_l = table[state_l][symbol_l]
-    # new_symbol_c, direction_c, new_state_c = table[state_c][symbol_c]
-    # new_symbol_r, direction_r, new_state_r = table[state_r][symbol_r]
-    direction_l, new_state_l = 0, 0
-    new_symbol_c = 0
-    direction_r, new_state_r = 0, 0
-    for state in range(len(table)):
-        for symbol in range(len(table[0])):
-            new_symbol, direction, new_state = table[state][symbol]
-            direction_l = if_then_else(equal(state, state_l) & equal(symbol, symbol_l), direction, direction_l)
-            new_state_l = if_then_else(equal(state, state_l) & equal(symbol, symbol_l), new_state, new_state_l)
-            
-            new_symbol_c = if_then_else(equal(state, state_c) & equal(symbol, symbol_c), new_symbol, new_symbol_c)
-            
-            direction_r = if_then_else(equal(state, state_r) & equal(symbol, symbol_r), direction, direction_r)
-            new_state_r = if_then_else(equal(state, state_r) & equal(symbol, symbol_r), new_state, new_state_r)
-    
+    # _, direction_l, new_state_l = table[state_l][symbol_l]
+    # new_symbol_c, _, _ = table[state_c][symbol_c]
+    # _, direction_r, new_state_r = table[state_r][symbol_r]
+    for state, row in enumerate(table):
+        state_match_l = equal(state, state_l)
+        state_match_c = equal(state, state_c)
+        state_match_r = equal(state, state_r)
+
+        for symbol, (new_symbol, direction, new_state) in enumerate(row):
+            match_l = state_match_l & equal(symbol, symbol_l)
+            match_c = state_match_c & equal(symbol, symbol_c)
+            match_r = state_match_r & equal(symbol, symbol_r)
+
+            direction_l = if_then_else(match_l, direction, direction_l)
+            new_state_l = if_then_else(match_l, new_state, new_state_l)
+
+            new_symbol_c = if_then_else(match_c, new_symbol, new_symbol_c)
+
+            direction_r = if_then_else(match_r, direction, direction_r)
+            new_state_r = if_then_else(match_r, new_state, new_state_r)
+
     # The new symbol is:
     # - the new symbol of the center (new_symbol_c) if the head is at the center (head_c)
     # - the symbol of the center (symbol_c) otherwise
@@ -70,9 +80,8 @@ def local_rule(table, l, c, r):
     # - the new state of the right cell (new_state_r) otherwise
     new_state = if_then_else(head_l, new_state_l, new_state_r)
     
-    res = new_head ^ (new_symbol << 1) ^ (new_state << 2)
+    return new_head ^ (new_symbol << 1) ^ (new_state << 2)
 
-    return res
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -155,8 +164,8 @@ stack = []
 
 #code = "1RB1LB_1LA1RC_0RC1LC"
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
-code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
+#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
 table = get_transition_table(code)
 
 number_steps = 0
