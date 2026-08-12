@@ -43,7 +43,6 @@ def if_then_else(cond, a, b):
     for i in range(len(a)):
         res[i] = b[i] ^ (cond & (a[i] ^ b[i]))
     return res
-    
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -61,13 +60,16 @@ def step():
     symbol_l, symbol_c, symbol_r = tape[origin-1], tape[origin], tape[origin+1]
     state_c = tape_state[origin]
     
+    # We compute where the state matches and where the symbol matches
+    state_matches = [equal(state, state_c) for state in states]
+    symbol_matches = [equal(symbol, symbol_c) for symbol in symbols]
+    
     # The two following for loop are equivalent to:
     # new_symbol, direction, new_state = table[state_c][symbol_c]
     new_symbol, direction, new_state = symbols[0], 0, states[0]
     for i, state in enumerate(states):
-        state_match_c = equal(state, state_c)
         for j, symbol in enumerate(symbols):
-            match_c = state_match_c & equal(symbol, symbol_c)
+            match_c = state_matches[i] & symbol_matches[j]
             new_symbol_, direction_, new_state_ = table[i][j]
             new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
             direction ^= match_c & direction_ # direction_ if match_c else direction
@@ -150,8 +152,7 @@ def compress(j):
     is_right = 0
     for i in range(origin + 1, len(tape)):
         is_right ^= tape_head[i]
-    is_center = tape_head[origin]
-    is_left = (is_center ^ 1) & (is_right ^ 1)
+    is_left = tape_head[origin] ^ is_right ^ 1
     # We consider the cells in a 2^(j+1) - 1 radius around the origin
     # We do a 2^(j-1)-shift towards the direction where the head isn't.
     # In the case where the head is at the origin, we do nothing
