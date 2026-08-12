@@ -8,22 +8,13 @@ def get_transition_table(code):
         row = []
         for i in range(0, len(state_code), 3):
             new_symbol, direction, new_state = state_code[i:i+3]
-            row.append((int(new_symbol), direction=="R", ord(new_state) - ord("A")))
+            new_symbol, direction, new_state = int(new_symbol), direction=="R", ord(new_state) - ord("A")
+            row.append((new_symbol, direction, new_state))
         table.append(row)
     return table
 
-def mask(b, nb_bits):
-    """Takes a bit b and duplicates it nb_bits times"""
-    res = 0
-    for i in range(nb_bits):
-        res |= b << i
-    return res
-
 def if_then_else(b, seq1, seq2):
-    """Takes a boolean and two sequences"""
-    length = max(seq1.bit_length(), seq2.bit_length(), 1)   
-    mask_b = mask(b, nb_bits=length)
-    return (seq1 & mask_b) ^ (seq2 & ~mask_b)
+    return (b * seq1) ^ ((b ^ 1) * seq2)
 
 def local_rule(table, l, c, r):
     """Each n-state 2-symbol TM can be converted to a cellular automaton of (2n + 2) states.
@@ -88,7 +79,8 @@ def step():
     # This counts the number of steps and can be removed
     global number_steps
     number_steps += 1
-    print(number_steps, len(tape))
+    if number_steps%100==0:
+        print(number_steps)
     # The head is at the origin
     origin = len(tape)//2
     # We update the head and the two neighbouring cells
@@ -164,7 +156,7 @@ stack = []
 
 #code = "1RB1LB_1LA1RC_0RC1LC"
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
+code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
 code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
 table = get_transition_table(code)
 
@@ -175,7 +167,7 @@ while all(not((v>>2)==len(table)-1 and (v&1)) for v in decrypt(tape)): # While t
     #print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
     phase(j)
     j += 1
-#print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
+print("".join([str((v&2) >> 1) for v in decrypt(tape)]))
 t1 = time()
 print(t1 - t0)
 print(number_steps)
