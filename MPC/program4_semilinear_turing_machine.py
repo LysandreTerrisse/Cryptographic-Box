@@ -1,4 +1,4 @@
-from mpc import encrypt, decrypt, equal
+from mpc import encrypt, decrypt
 from time import time
 
 def get_transition_table(code):
@@ -13,8 +13,54 @@ def get_transition_table(code):
         table.append(row)
     return table
 
-def if_then_else(b, seq1, seq2):
-    return (b * seq1) ^ ((b ^ 1) * seq2)
+# Takes a MSB list and returns an int
+def to_int(x):
+    if isinstance(x, list):
+        res = 0
+        for bit in x:
+            res = (res << 1) | bit
+        return res
+    return x
+    
+
+# Takes an int and returns the MSB list
+def MSB_list(x):
+    if isinstance(x, list):
+        return x
+    length = max(1, x.bit_length())
+    if length==1:
+        return [x]
+    return [(x>>i)&1 for i in range(length-1, -1, -1)]
+
+# Takes sequences (int or list)
+def equal(a, b):
+    a, b = MSB_list(a), MSB_list(b)
+    len_a, len_b = len(a), len(b)
+    # We increase the size of a and b to the same size
+    if len_a < len_b:
+        a[:0] = [0] * (len_b - len_a)
+    elif len_b < len_a:
+        b[:0] = [0] * (len_a - len_b)
+    
+    res = 1
+    for i in range(len(a)):
+        res &= a[i] ^ b[i] ^ 1
+    return res
+
+# Takes a bit and two sequences (int or list).
+def if_then_else(cond, a, b):
+    a, b = MSB_list(a), MSB_list(b)
+    len_a, len_b = len(a), len(b)
+    # We increase the size of seq1 and seq2 to the same size
+    if len_a < len_b:
+        a[:0] = [0] * (len_b - len_a)
+    elif len_b < len_a:
+        b[:0] = [0] * (len_a - len_b)
+    
+    res, not_cond = [0] * len(a), cond ^ 1
+    for i in range(len(a)):
+        res[i] = (cond & a[i]) ^ (not_cond & b[i])
+    return res
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -40,7 +86,7 @@ def step():
         for symbol, (new_symbol_, direction_, new_state_) in enumerate(row):
             match_c = state_match_c & equal(symbol, symbol_c)
             new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
-            direction = if_then_else(match_c, direction_, direction)
+            direction = (match_c & direction_) ^ ((match_c ^ 1) & direction) # direction_ if match_c else direction
             new_state = if_then_else(match_c, new_state_, new_state)
     
     # The cell to the left gets the head if the direction is L (False)
@@ -109,7 +155,7 @@ def rotate(begin, end, amount, is_left, is_right):
     # We perform no rotation if the head is to the center
     for i in range(len(center)):
         tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
-        tape_head[begin+i] = if_then_else(is_right, left_head[i], if_then_else(is_left, right_head[i], center_head[i]))
+        tape_head[begin+i] = (is_right & left_head[i]) ^ (is_left & right_head[i]) ^ ((is_right ^ is_left ^ 1) & center_head[i])
         tape_state[begin+i] = if_then_else(is_right, left_state[i], if_then_else(is_left, right_state[i], center_state[i]))
 
 def compress(j):
@@ -155,10 +201,10 @@ table = get_transition_table(code)
 number_steps = 0
 j = 0
 t0 = time()
-while all(not(state==len(table)-1 and head_here) for state, head_here in zip(decrypt(tape_state), decrypt(tape_head))): # While the head is not in the last state
+while all(not(to_int(state)==len(table)-1 and head_here) for state, head_here in zip(decrypt(tape_state), decrypt(tape_head))): # While the head is not in the last state
     #print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
     #print("".join([str(symbol) for symbol in decrypt(tape)]))
     phase(j)
     j += 1
-print("".join([str(symbol) for symbol in decrypt(tape)]))
+print("".join([str(to_int(symbol)) for symbol in decrypt(tape)]))
 print(number_steps)
