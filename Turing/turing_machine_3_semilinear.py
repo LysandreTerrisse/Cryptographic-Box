@@ -1,3 +1,4 @@
+from mpc import encrypt, decrypt, equal
 from time import time
 
 def get_transition_table(code):
@@ -11,7 +12,7 @@ def get_transition_table(code):
         table.append(row)
     return table
 
-def mask(b, nb_bits=32):
+def mask(b, nb_bits):
     """Takes a bit b and duplicates it nb_bits times"""
     res = 0
     for i in range(nb_bits):
@@ -20,7 +21,8 @@ def mask(b, nb_bits=32):
 
 def if_then_else(b, seq1, seq2):
     """Takes a boolean and two sequences"""
-    mask_b = mask(b)
+    length = max(seq1.bit_length(), seq2.bit_length(), 1)   
+    mask_b = mask(b, nb_bits=length)
     return (seq1 & mask_b) ^ (seq2 & ~mask_b)
 
 def local_rule(table, l, c, r):
@@ -31,9 +33,6 @@ def local_rule(table, l, c, r):
     The second indicates whether the head is here (boolean)
     The third indicates the state of the head (int)
     """
-    #symbol_l, head_l, state_l = l
-    #symbol_c, head_c, state_c = c
-    #symbol_r, head_r, state_r = r
     head_l, symbol_l, state_l = l & 1, (l >> 1) & 1, l >> 2
     head_c, symbol_c, state_c = c & 1, (c >> 1) & 1, c >> 2
     head_r, symbol_r, state_r = r & 1, (r >> 1) & 1, r >> 2
@@ -48,14 +47,13 @@ def local_rule(table, l, c, r):
     for state in range(len(table)):
         for symbol in range(len(table[0])):
             new_symbol, direction, new_state = table[state][symbol]
+            direction_l = if_then_else(equal(state, state_l) & equal(symbol, symbol_l), direction, direction_l)
+            new_state_l = if_then_else(equal(state, state_l) & equal(symbol, symbol_l), new_state, new_state_l)
             
-            direction_l = if_then_else(state==state_l and symbol==symbol_l, direction, direction_l)
-            new_state_l = if_then_else(state==state_l and symbol==symbol_l, new_state, new_state_l)
+            new_symbol_c = if_then_else(equal(state, state_c) & equal(symbol, symbol_c), new_symbol, new_symbol_c)
             
-            new_symbol_c = if_then_else(state==state_c and symbol==symbol_c, new_symbol, new_symbol_c)
-            
-            direction_r = if_then_else(state==state_r and symbol==symbol_r, direction, direction_r)
-            new_state_r = if_then_else(state==state_r and symbol==symbol_r, new_state, new_state_r)
+            direction_r = if_then_else(equal(state, state_r) & equal(symbol, symbol_r), direction, direction_r)
+            new_state_r = if_then_else(equal(state, state_r) & equal(symbol, symbol_r), new_state, new_state_r)
     
     # The new symbol is:
     # - the new symbol of the center (new_symbol_c) if the head is at the center (head_c)
@@ -81,17 +79,15 @@ def step():
     # This counts the number of steps and can be removed
     global number_steps
     number_steps += 1
-    if number_steps % 1000 == 0:
-        print(number_steps, len(tape))
+    print(number_steps, len(tape))
     # The head is at the origin
     origin = len(tape)//2
     # We update the head and the two neighbouring cells
     state = tape[origin] >> 2
-    if state < len(table):
-        a, b, c, d, e = tape[origin-2], tape[origin-1], tape[origin], tape[origin+1], tape[origin+2]
-        tape[origin-1] = local_rule(table, a, b, c)
-        tape[origin] = local_rule(table, b, c, d)
-        tape[origin+1] = local_rule(table, c, d, e)
+    a, b, c, d, e = tape[origin-2], tape[origin-1], tape[origin], tape[origin+1], tape[origin+2]
+    tape[origin-1] = local_rule(table, a, b, c)
+    tape[origin] = local_rule(table, b, c, d)
+    tape[origin+1] = local_rule(table, c, d, e)
 
 def ensure_capacity(j):
     # COMPRESS(j) will consider a sphere of radius 2^(j+1) - 1.
@@ -126,10 +122,7 @@ def rotate(begin, end, amount, is_left, is_right, is_center):
     # We perform the left rotation if the head is to the right
     # We perform the right rotation if the head is to the left
     # We perform no rotation if the head is to the center
-    mask_left = mask(is_right)
-    mask_right = mask(is_left)
-    mask_center = mask(is_center)
-    tape[begin:end + 1] = [(mask_left & left[i]) ^ (mask_right & right[i]) ^ (mask_center & center[i]) for i in range(length)]
+    tape[begin:end + 1] = [if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i])) for i in range(length)]
 
 def compress(j):
     # The origin is at len(tape)//2
@@ -156,23 +149,24 @@ def expand(j):
 
 tape = [0 for _ in range(2**7 - 1)]#range(30000)]
 tape[len(tape)//2] = 1 # We set the LSB to 1 to tell that the head is here
+tape = encrypt(tape)
 
 stack = []
 
-code = "1RB1LB_1LA1RZ"
-code = "1RB1RZ_1LB0RC_1LC1LA"
-code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA"
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA"
+#code = "1RB1LB_1LA1RC_0RC1LC"
+#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
+code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
 table = get_transition_table(code)
 
 number_steps = 0
 j = 0
 t0 = time()
-while all(not((v>>2) >= len(table) and (v&1)) for v in tape): # While no state is an halting state
-    #print("".join([str((v&2) >> 1) for v in tape]))
+while all(not((v>>2)==len(table)-1 and (v&1)) for v in decrypt(tape)): # While the head is not in the last state
+    #print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
     phase(j)
     j += 1
-print("".join([str((v&2) >> 1) for v in tape]))
+#print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
 t1 = time()
 print(t1 - t0)
 print(number_steps)
