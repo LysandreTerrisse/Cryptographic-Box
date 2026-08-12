@@ -204,6 +204,26 @@ class EncryptedInt:
             res &= a[i] ^ b[i] ^ 1
         # If we do not put it in an EncryptedInt, it would be an EncryptedInt
         return EncryptedInt([res])
+    
+    def __mul__(self, b):
+        if b.bit_length()==1:
+            if isinstance(b, EncryptedInt):
+                return EncryptedInt([bit & b.bits[0] for bit in self.bits])
+            elif b:
+                return self
+            else:
+                return 0
+        elif self.bit_length()==1:
+            if isinstance(b, EncryptedInt):
+                return EncryptedInt([self.bits[0] & bit for bit in b.bits])
+            elif b > 1:
+                return EncryptedInt([self.bits[0] & bit for bit in MSB_list(b)])
+            elif b==1:
+                return self
+            else:
+                return 0
+        else:
+            raise Exception('Multiplication of two EncryptedInts of size different than 1')
 
     def __rxor__(self, b):
         return self ^ b
@@ -213,6 +233,9 @@ class EncryptedInt:
 
     def __ror__(self, b):
         return self | b
+    
+    def __rmul__(self, b):
+        return self * b
 
 def equal(x, y):
     if isinstance(y, EncryptedInt):
