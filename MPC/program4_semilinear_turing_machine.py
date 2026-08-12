@@ -3,64 +3,44 @@ from time import time
 
 def get_transition_table(code):
     """Convert the compact machine description into a transition table."""
+    nb_states = code.count("_") + 1
+    nb_symbols = len(code.split("_")[0])//3
+    # The states will be encoded in MSB, such as [0, 0, 0], [0, 0, 1], ..., [1, 1, 1].
+    # Same for the symbols.
+    states = [[(state >> i) & 1 for i in range((nb_states-1).bit_length() - 1, -1, -1)] for state in range(nb_states)]
+    symbols = [[(symbol >> i) & 1 for i in range((nb_symbols-1).bit_length() - 1, -1, -1)] for symbol in range(nb_symbols)]
+    # The table will give for each state and symbol a new symbol, a direction, and a new state.
     table = []
     for state_code in code.split("_"):
         row = []
         for i in range(0, len(state_code), 3):
             new_symbol, direction, new_state = state_code[i:i+3]
             new_symbol, direction, new_state = int(new_symbol), direction=="R", ord(new_state) - ord("A")
+            new_symbol, new_state = symbols[new_symbol], states[new_state]
             row.append((new_symbol, direction, new_state))
         table.append(row)
-    return table
+    return states, symbols, table
 
-# Takes a MSB list and returns an int
 def to_int(x):
+    """Takes a MSB list and returns an int"""
     if isinstance(x, list):
         res = 0
         for bit in x:
             res = (res << 1) | bit
         return res
     return x
-    
 
-# Takes an int and returns the MSB list
-def MSB_list(x):
-    if isinstance(x, list):
-        return x
-    length = max(1, x.bit_length())
-    if length==1:
-        return [x]
-    return [(x>>i)&1 for i in range(length-1, -1, -1)]
-
-# Takes sequences (int or list)
 def equal(a, b):
-    a, b = MSB_list(a), MSB_list(b)
-    len_a, len_b = len(a), len(b)
-    # We increase the size of a and b to the same size
-    if len_a < len_b:
-        a[:0] = [0] * (len_b - len_a)
-    elif len_b < len_a:
-        b[:0] = [0] * (len_a - len_b)
-    
+    """Takes two sequences (list) of same length"""
     res = 1
     for i in range(len(a)):
         res &= a[i] ^ b[i] ^ 1
     return res
 
-# Takes a bit and two sequences (int or list).
 def if_then_else(cond, a, b):
-    a, b = MSB_list(a), MSB_list(b)
-    len_a, len_b = len(a), len(b)
-    # We increase the size of seq1 and seq2 to the same size
-    if len_a < len_b:
-        a[:0] = [0] * (len_b - len_a)
-    elif len_b < len_a:
-        b[:0] = [0] * (len_a - len_b)
-    
-    res, not_cond = [0] * len(a), cond ^ 1
-    for i in range(len(a)):
-        res[i] = (cond & a[i]) ^ (not_cond & b[i])
-    return res
+    """Takes a bit and two sequences (list) of same length"""
+    not_cond = cond ^ 1
+    return [(cond & a) ^ (not_cond & b) for i in range(len(a))]
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -80,11 +60,12 @@ def step():
     
     # The two following for loop are equivalent to:
     # new_symbol, direction, new_state = table[state_c][symbol_c]
-    new_symbol, direction, new_state = 0, 0, 0
-    for state, row in enumerate(table):
+    new_symbol, direction, new_state = symbols[0], 0, states[0]
+    for i, state in enumerate(states):
         state_match_c = equal(state, state_c)
-        for symbol, (new_symbol_, direction_, new_state_) in enumerate(row):
+        for j, symbol in enumerate(symbols):
             match_c = state_match_c & equal(symbol, symbol_c)
+            new_symbol_, direction_, new_state_ = table[i][j]
             new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
             direction = (match_c & direction_) ^ ((match_c ^ 1) & direction) # direction_ if match_c else direction
             new_state = if_then_else(match_c, new_state_, new_state)
@@ -98,9 +79,10 @@ def step():
     
     # The cell to the middle doesn't have the head anymore
     # Its symbol becomes the new symbol
+    # Its state can be anything, by default the first state
     tape[origin] = new_symbol
     tape_head[origin] = 0
-    tape_state[origin] = 0
+    tape_state[origin] = states[0]
     
     # The cell to the right gets the head if the direction is R (True)
     # Its symbol stays the same (symbol_r)
@@ -117,12 +99,12 @@ def ensure_capacity(j):
     if len(tape) < required_length:
         # We add some amount to the left and to the right
         # Note that the origin is still at the center of the tape after the operation
-        tape[:0] = [0 for _ in range((required_length - len(tape)) // 2)]
-        tape.extend([0 for _ in range(required_length - len(tape))])
-        tape_head[:0] = [0 for _ in range((required_length - len(tape_head)) // 2)]
-        tape_head.extend([0 for _ in range(required_length - len(tape_head))])
-        tape_state[:0] = [0 for _ in range((required_length - len(tape_state)) // 2)]
-        tape_state.extend([0 for _ in range(required_length - len(tape_state))])
+        tape[:0] = [symbols[0]] * ((required_length - len(tape)) // 2)
+        tape.extend([symbols[0]] * (required_length - len(tape)))
+        tape_head[:0] = [0] * ((required_length - len(tape_head)) // 2)
+        tape_head.extend([0] * (required_length - len(tape_head)))
+        tape_state[:0] = [states[0]] * ((required_length - len(tape_state)) // 2)
+        tape_state.extend([states[0]] * (required_length - len(tape_state)))
 
 def phase(j):
     ensure_capacity(j)
@@ -181,26 +163,35 @@ def expand(j):
     origin = len(tape)//2
     rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=was_right, is_right=was_left)
 
+#code = "1RB1LB_1LA1RC_0RC1LC"
+#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
+#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF"
+states, symbols, table = get_transition_table(code)
 
 # The tape is separated in three parts:
 # - tape_symbol, which tells the symbol of the tape
 # - tape_head, which tells whether the head is here
 # - tape_state, which tells the state of the tape
-tape = encrypt([0 for _ in range(2**7 - 1)])
+tape = encrypt([symbols[0]] * (2**7 - 1))
 tape_head = [i==len(tape)//2 for i in range(len(tape))]
-tape_state = [0 for _ in range(len(tape))]
+tape_state = [states[0]] * len(tape)
 
 stack = []
 
-#code = "1RB1LB_1LA1RC_0RC1LC"
-#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
-table = get_transition_table(code)
+
 
 number_steps = 0
 j = 0
 t0 = time()
+"""
+import cProfile
+r = range(10)
+cProfile.run("for j in r: phase(j)")
+exit()
+"""
+
+
 while all(not(to_int(state)==len(table)-1 and head_here) for state, head_here in zip(decrypt(tape_state), decrypt(tape_head))): # While the head is not in the last state
     #print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
     #print("".join([str(symbol) for symbol in decrypt(tape)]))
