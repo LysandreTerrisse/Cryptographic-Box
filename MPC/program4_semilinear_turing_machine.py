@@ -66,14 +66,18 @@ def step():
     
     # The two following for loop are equivalent to:
     # new_symbol, direction, new_state = table[state_c][symbol_c]
-    new_symbol, direction, new_state = symbols[0], 0, states[0]
+    new_symbol, direction, new_state = [0]*len(symbols[0]), 0, [0]*len(states[0])
     for i, state in enumerate(states):
         for j, symbol in enumerate(symbols):
             match_c = state_matches[i] & symbol_matches[j]
             new_symbol_, direction_, new_state_ = table[i][j]
-            new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
-            direction ^= match_c & direction_ # direction_ if match_c else direction
-            new_state = if_then_else(match_c, new_state_, new_state)
+            # The direction is easy to compute since it is a single bit
+            direction ^= match_c & direction_
+            # For the new symbol and the new state, we need to make a loop
+            for k in range(len(new_symbol)):
+                new_symbol[k] ^= match_c & new_symbol_[k]
+            for k in range(len(new_state)):
+                new_state[k] ^= match_c & new_state_[k]
     
     # The cell to the left gets the head if the direction is L (False)
     # Its symbol stays the same (symbol_l)
