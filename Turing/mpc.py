@@ -179,9 +179,9 @@ class EncryptedInt:
         len_p, len_q = len(p), len(q)
         # We increase the size of p and q to the same size
         if len_p < len_q:
-            p = [0] * (len_q - len_p) + p
+            p[:0] = [0] * (len_q - len_p)
         elif len_q < len_p:
-            q = [0] * (len_p - len_q) + q
+            q[:0] = [0] * (len_p - len_q)
         # We do the bitwize XOR
         return EncryptedInt([p[i] ^ q[i] for i in range(len(p))])
     
