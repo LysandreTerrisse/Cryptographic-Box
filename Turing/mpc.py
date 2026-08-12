@@ -196,13 +196,12 @@ class EncryptedInt:
         len_a, len_b = len(a), len(b)
         # We increase the size of a and b to the same size
         if len_a < len_b:
-            a = [0] * (len_b - len_a) + a
+            a[:0] = [0] * (len_b - len_a)
         elif len_b < len_a:
-            b = [0] * (len_a - len_b) + b
+            b[:0] = [0] * (len_a - len_b)
         res = 1
         for i in range(len(a)):
             res &= a[i] ^ b[i] ^ 1
-        # If we do not put it in an EncryptedInt, it would be an EncryptedInt
         return EncryptedInt([res])
     
     def __mul__(self, b):
