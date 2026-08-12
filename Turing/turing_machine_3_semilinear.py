@@ -16,64 +16,6 @@ def get_transition_table(code):
 def if_then_else(b, seq1, seq2):
     return (b * seq1) ^ ((b ^ 1) * seq2)
 
-def local_rule(table, l, c, r):
-    """Each n-state 2-symbol TM can be converted to a cellular automaton of (2n + 2) states.
-    If the TM has states {A, B, C} and symbols {0, 1}, then the states of the cells are {0, 0A, 0B, 0C, 1, 1A, 1B, 1C}.
-    For us, the value of each cell will be a tuple (symbol, head_here, state_of_head)
-    The first indicates the symbol (int)
-    The second indicates whether the head is here (boolean)
-    The third indicates the state of the head (int)"""
-    
-    head_l, symbol_l, state_l = l & 1, (l >> 1) & 1, l >> 2
-    head_c, symbol_c, state_c = c & 1, (c >> 1) & 1, c >> 2
-    head_r, symbol_r, state_r = r & 1, (r >> 1) & 1, r >> 2
-
-    direction_l = 0
-    new_state_l = 0
-    new_symbol_c = 0
-    direction_r = 0
-    new_state_r = 0
-    
-    # The two following for loop are equivalent to:
-    # _, direction_l, new_state_l = table[state_l][symbol_l]
-    # new_symbol_c, _, _ = table[state_c][symbol_c]
-    # _, direction_r, new_state_r = table[state_r][symbol_r]
-    for state, row in enumerate(table):
-        state_match_l = equal(state, state_l)
-        state_match_c = equal(state, state_c)
-        state_match_r = equal(state, state_r)
-
-        for symbol, (new_symbol, direction, new_state) in enumerate(row):
-            match_l = state_match_l & equal(symbol, symbol_l)
-            match_c = state_match_c & equal(symbol, symbol_c)
-            match_r = state_match_r & equal(symbol, symbol_r)
-
-            direction_l = if_then_else(match_l, direction, direction_l)
-            new_state_l = if_then_else(match_l, new_state, new_state_l)
-
-            new_symbol_c = if_then_else(match_c, new_symbol, new_symbol_c)
-
-            direction_r = if_then_else(match_r, direction, direction_r)
-            new_state_r = if_then_else(match_r, new_state, new_state_r)
-
-    # The new symbol is:
-    # - the new symbol of the center (new_symbol_c) if the head is at the center (head_c)
-    # - the symbol of the center (symbol_c) otherwise
-    new_symbol = if_then_else(head_c, new_symbol_c, symbol_c)
-    
-    # The new head_here is true if and only if one of the clauses is met (OR and XOR work):
-    # - The head is at the left and goes to the right (head_l & direction_l)
-    # - The head is at the right and goes to the left (head_r & (direction_r ^ 1))
-    new_head = (head_l & direction_l) ^ (head_r & (direction_r ^ 1))
-    
-    # The new state of the head is:
-    # - the new state of the left cell (new_state_l) if the head is at the left (head_l)
-    # - the new state of the right cell (new_state_r) otherwise
-    new_state = if_then_else(head_l, new_state_l, new_state_r)
-    
-    return new_head ^ (new_symbol << 1) ^ (new_state << 2)
-
-
 def step():
     """Simulate exactly one step of the original TM."""
     # This counts the number of steps and can be removed
@@ -83,12 +25,42 @@ def step():
         print(number_steps)
     # The head is at the origin
     origin = len(tape)//2
+    
     # We update the head and the two neighbouring cells
-    state = tape[origin] >> 2
-    a, b, c, d, e = tape[origin-2], tape[origin-1], tape[origin], tape[origin+1], tape[origin+2]
-    tape[origin-1] = local_rule(table, a, b, c)
-    tape[origin] = local_rule(table, b, c, d)
-    tape[origin+1] = local_rule(table, c, d, e)
+    # For us, the value of each cell will be a sequence v of bits.
+    # The first LSB (that is, v & 1) will indicate whether the head is here.
+    # The next LSB (that is, (v >> 1) & 1) will encode the symbol of the tape (here binary).
+    # The next bits (v >> 2) will encode the state of the TM.
+    symbol_l = (tape[origin-1] >> 1) & 1
+    symbol_c, state_c = (tape[origin] >> 1) & 1, tape[origin] >> 2
+    symbol_r = (tape[origin+1] >> 1) & 1
+
+    new_symbol, direction, new_state = 0, 0, 0
+    
+    # The two following for loop are equivalent to:
+    # new_symbol, direction, new_state = table[state_c][symbol_c]
+    for state, row in enumerate(table):
+        state_match_c = equal(state, state_c)
+        for symbol, (new_symbol_, direction_, new_state_) in enumerate(row):
+            match_c = state_match_c & equal(symbol, symbol_c)
+            new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
+            direction = if_then_else(match_c, direction_, direction)
+            new_state = if_then_else(match_c, new_state_, new_state)
+    
+    # The cell to the left gets the head if the direction is L (False)
+    # Its symbol stays the same (symbol_l)
+    # Its state becomes the new state
+    tape[origin-1] = (direction ^ 1) ^ (symbol_l << 1) ^ (new_state << 2)
+    
+    # The cell to the middle doesn't have the head anymore
+    # Its symbol becomes the new symbol
+    tape[origin] = new_symbol << 1
+    
+    # The cell to the right gets the head if the direction is R (True)
+    # Its symbol stays the same (symbol_r)
+    # Its state becomes the new state
+    tape[origin+1] = direction ^ (symbol_r << 1) ^ (new_state << 2)
+    
 
 def ensure_capacity(j):
     # COMPRESS(j) will consider a sphere of radius 2^(j+1) - 1.
@@ -154,8 +126,8 @@ stack = []
 
 #code = "1RB1LB_1LA1RC_0RC1LC"
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
+code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA_0RZ1LZ"
 table = get_transition_table(code)
 
 number_steps = 0
