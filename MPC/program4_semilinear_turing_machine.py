@@ -39,7 +39,11 @@ def equal(a, b):
 
 def if_then_else(cond, a, b):
     """Takes a bit and two sequences (list) of same length"""
-    return [b[i] ^ (cond & (a[i] ^ b[i])) for i in range(len(a))]
+    res = [0] * len(a)
+    for i in range(len(a)):
+        res[i] = b[i] ^ (cond & (a[i] ^ b[i]))
+    return res
+    
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -145,7 +149,7 @@ def compress(j):
     # We find whether the head is to the right or to the left or to the origin.
     is_right = 0
     for i in range(origin + 1, len(tape)):
-        is_right |= tape_head[i]
+        is_right ^= tape_head[i]
     is_center = tape_head[origin]
     is_left = (is_center ^ 1) & (is_right ^ 1)
     # We consider the cells in a 2^(j+1) - 1 radius around the origin
@@ -162,10 +166,11 @@ def expand(j):
     origin = len(tape)//2
     rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=was_right, is_right=was_left)
 
-#code = "1RB1LB_1LA1RC_0RC1LC"
-#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD"
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE"
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF"
+#code = "1RB1LB_1LA1RC_0RC1LC" # BB(2)
+#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD" # BB(3)
+#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
+#code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
 # The tape is separated in three parts:
