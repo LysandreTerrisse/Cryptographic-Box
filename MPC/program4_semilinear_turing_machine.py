@@ -39,8 +39,7 @@ def equal(a, b):
 
 def if_then_else(cond, a, b):
     """Takes a bit and two sequences (list) of same length"""
-    not_cond = cond ^ 1
-    return [(cond & a) ^ (not_cond & b) for i in range(len(a))]
+    return [b[i] ^ (cond & (a[i] ^ b[i])) for i in range(len(a))]
 
 def step():
     """Simulate exactly one step of the original TM."""
@@ -67,7 +66,7 @@ def step():
             match_c = state_match_c & equal(symbol, symbol_c)
             new_symbol_, direction_, new_state_ = table[i][j]
             new_symbol = if_then_else(match_c, new_symbol_, new_symbol)
-            direction = (match_c & direction_) ^ ((match_c ^ 1) & direction) # direction_ if match_c else direction
+            direction ^= match_c & direction_ # direction_ if match_c else direction
             new_state = if_then_else(match_c, new_state_, new_state)
     
     # The cell to the left gets the head if the direction is L (False)
@@ -178,8 +177,6 @@ tape_head = [i==len(tape)//2 for i in range(len(tape))]
 tape_state = [states[0]] * len(tape)
 
 stack = []
-
-
 
 number_steps = 0
 j = 0
