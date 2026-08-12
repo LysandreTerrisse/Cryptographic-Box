@@ -28,6 +28,12 @@ class EncryptedBit:
             return EncryptedBit(self.share_alice ^ q.share_alice, self.share_bob ^ q.share_bob, self.share_charlie ^ q.share_charlie)
         # If q isn't an EncryptedBit, then it is a constant, and thus the addition is trivial:
         return EncryptedBit(self.share_alice ^ q, self.share_bob ^ q, self.share_charlie ^ q)
+        # The following is somehow slower:
+        # if q:
+        #     return EncryptedBit(self.share_alice ^ q, self.share_bob ^ q, self.share_charlie ^ q)
+        # else:
+        #     return self
+        
     
     # and between p and q
     def __and__(self, q):
@@ -121,9 +127,14 @@ class EncryptedBit:
             return EncryptedBit(v ^ share_alice_of_g, v ^ share_bob_of_g, v ^ share_charlie_of_g)
         # If q isn't an EncryptedBit, then it is a constant, and thus the multiplication is trivial:
         return EncryptedBit(mul[(self.share_alice << 2) | q], mul[(self.share_bob << 2) | q], mul[(self.share_charlie << 2) | q])
+        # The following is somehow slower:
+        # if q:
+        #     return self
+        # else:
+        #     return 0
     
     def __or__(self, b):
-        return (self ^ b) ^ (self & b)
+        return self ^ b ^ (self & b)
     
     def __rxor__(self, b):
         return self ^ b
@@ -133,6 +144,9 @@ class EncryptedBit:
     
     def __ror__(self, b):
         return self | b
+    
+    def bit_length(self):
+        return 1
 
 # This function outputs elements of the class EncryptedBit (or lists of them).
 def encrypt(x):
