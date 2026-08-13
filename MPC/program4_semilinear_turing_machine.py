@@ -160,18 +160,17 @@ def rotate(begin, end, amount, is_left, is_right):
             tape_state[begin_plus_i][j] = (is_right & (left_state_i[j] ^ center_state_i[j])) ^ (is_left & (right_state_i[j] ^ center_state_i[j])) ^ center_state_i[j]
 
 def compress(j):
+    # We consider the cells in a 2**(j+1) - 1 = (1 << (j + 1)) - 1 radius around the origin
     # The origin is at len(tape)//2
     origin = len(tape)//2
+    radius = ((1 << (j + 1)) - 1)
     # We find whether the head is to the right or to the left or to the origin.
-    # TODO: use a counter to keep track of the position of the head. This is the reason why the complexity is currently too big. This also enables us to NOT have a boolean indicating the position of the head at each timestep.
     is_right = tape_head[origin + 1]
-    for i in range(origin + 2, len(tape)):#radius+1):
+    for i in range(origin + 2, origin + radius):
         is_right ^= tape_head[i]
     is_left = tape_head[origin] ^ is_right ^ 1
-    # We consider the cells in a 2**(j+1) - 1 = (1 << (j + 1)) - 1 radius around the origin
     # We do a 2**(j-1)-shift = (1 << (j - 1)) towards the direction where the head isn't.
     # In the case where the head is at the origin, we do nothing
-    radius = ((1 << (j + 1)) - 1)
     rotate(begin = origin - radius, end = origin + radius, amount = 1 << (j - 1), is_left=is_left, is_right=is_right)
     # We add a note to the stack that tells the position where the head was
     stack.append((is_left, is_right))
@@ -185,8 +184,8 @@ def expand(j):
 
 #code = "1RB1LB_1LA1RC_0RC1LC" # BB(2)
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD" # BB(3)
-code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
+#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
 #code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
