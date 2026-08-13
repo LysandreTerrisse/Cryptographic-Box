@@ -40,7 +40,7 @@ def equal(a, b):
 def step():
     """Simulate exactly one step of the original TM."""
     # This counts the number of steps and can be removed
-    global number_steps
+    global number_steps, current_state
     number_steps += 1
     if number_steps%100==0:
         print(number_steps)
@@ -48,50 +48,32 @@ def step():
         print(t1 - t0)
     # The head is at the origin
     origin = len(tape)//2
-    
-    # We update the head and the two neighbouring cells
-    symbol_l, symbol_c, symbol_r = tape[origin-1], tape[origin], tape[origin+1]
-    state_c = tape_state[origin]
+    current_symbol = tape[origin]
     
     # We compute where the state matches and where the symbol matches
-    state_matches = [equal(state, state_c) for state in states]
-    symbol_matches = [equal(symbol, symbol_c) for symbol in symbols]
+    state_matches = [equal(state, current_state) for state in states]
+    symbol_matches = [equal(symbol, current_symbol) for symbol in symbols]
     
-    # The two following for loop are equivalent to:
-    # new_symbol, direction, new_state = table[state_c][symbol_c]
+    # The two following for loops are equivalent to:
+    # new_symbol, direction, new_state = table[to_int(current_state)][to_int(current_symbol)]
     new_symbol, direction, new_state = [0]*len(symbols[0]), 0, [0]*len(states[0])
     for i, state in enumerate(states):
         for j, symbol in enumerate(symbols):
-            match_c = state_matches[i] & symbol_matches[j]
+            match = state_matches[i] & symbol_matches[j]
             new_symbol_, direction_, new_state_ = table[i][j]
             # The direction is easy to compute since it is a single bit
-            direction ^= match_c & direction_
+            direction ^= match & direction_
             # For the new symbol and the new state, we need to make a loop
             for k in range(len(new_symbol)):
-                new_symbol[k] ^= match_c & new_symbol_[k]
+                new_symbol[k] ^= match & new_symbol_[k]
             for k in range(len(new_state)):
-                new_state[k] ^= match_c & new_state_[k]
+                new_state[k] ^= match & new_state_[k]
     
-    # The cell to the left gets the head if the direction is L (False)
-    # Its symbol stays the same (symbol_l)
-    # Its state becomes the new state
-    tape[origin-1] = symbol_l
-    tape_head[origin-1] = direction ^ 1
-    tape_state[origin-1] = new_state
-    
-    # The cell to the middle doesn't have the head anymore
-    # Its symbol becomes the new symbol
-    # Its state can be anything, by default the first state
-    tape[origin] = new_symbol
-    tape_head[origin] = 0
-    tape_state[origin] = states[0]
-    
-    # The cell to the right gets the head if the direction is R (True)
-    # Its symbol stays the same (symbol_r)
-    # Its state becomes the new state
-    tape[origin+1] = symbol_r
-    tape_head[origin+1] = direction
-    tape_state[origin+1] = new_state
+    # We update the current state, the current symbol, and the head markers
+    current_state, tape[origin] = new_state, new_symbol
+    head_markers[origin-1] = direction ^ 1
+    head_markers[origin] = 0
+    head_markers[origin+1] = direction
 
 def ensure_capacity(j):
     # COMPRESS(j) will consider a sphere of radius 2^(j+1) - 1.
@@ -103,10 +85,9 @@ def ensure_capacity(j):
         # Note that the origin is still at the center of the tape after the operation
         tape[:0] = [symbols[0]] * ((required_length - len(tape)) // 2)
         tape.extend([symbols[0]] * (required_length - len(tape)))
-        tape_head[:0] = [0] * ((required_length - len(tape_head)) // 2)
-        tape_head.extend([0] * (required_length - len(tape_head)))
-        tape_state[:0] = [states[0]] * ((required_length - len(tape_state)) // 2)
-        tape_state.extend([states[0]] * (required_length - len(tape_state)))
+        # We do the same for the head markers
+        head_markers[:0] = [0] * ((required_length - len(head_markers)) // 2)
+        head_markers.extend([0] * (required_length - len(head_markers)))
 
 def phase(j):
     ensure_capacity(j)
@@ -121,21 +102,16 @@ def phase(j):
         expand(j)
 
 def rotate(begin, end, amount, is_left, is_right):
-    # We compute the three possible rotations
+    # We compute the three possible rotations, both for the tape and the head markers
     center       = tape[begin:end + 1]
-    center_head  = tape_head[begin:end + 1]
-    center_state = tape_state[begin:end + 1]
-    
     left       = center[amount:] + center[:amount]
-    left_head  = center_head[amount:] + center_head[:amount]
-    left_state = center_state[amount:] + center_state[:amount]
-    
     right       = center[-amount:] + center[:-amount]
-    right_head  = center_head[-amount:] + center_head[:-amount]
-    right_state = center_state[-amount:] + center_state[:-amount]
+    
+    center_head_markers  = head_markers[begin:end + 1]
+    left_head_markers  = center_head_markers[amount:] + center_head_markers[:amount]
+    right_head_markers  = center_head_markers[-amount:] + center_head_markers[:-amount]
     
     symbol_size = len(symbols[0])
-    state_size = len(states[0])
     
     # We perform the left rotation if the head is to the right
     # We perform the right rotation if the head is to the left
@@ -144,20 +120,14 @@ def rotate(begin, end, amount, is_left, is_right):
         # These temporary variables are in order to prevent a lot of list accesses and additions
         begin_plus_i = begin + i
         left_i, center_i, right_i = left[i], center[i], right[i]
-        left_state_i, center_state_i, right_state_i = left_state[i], center_state[i], right_state[i]
         
-        # Equivalently, tape_head[begin+i] = if_then_else(is_right, left_head[i], if_then_else(is_left, right_head[i], center_head[i]))
-        tape_head[begin_plus_i] = (is_right & (left_head[i] ^ center_head[i])) ^ (is_left & (right_head[i] ^ center_head[i])) ^ center_head[i]
+        # Equivalently, head_markers[begin+i] = if_then_else(is_right, left_head_markers[i], if_then_else(is_left, right_head_markers[i], center_head_markers[i]))
+        head_markers[begin_plus_i] = (is_right & (left_head_markers[i] ^ center_head_markers[i])) ^ (is_left & (right_head_markers[i] ^ center_head_markers[i])) ^ center_head_markers[i]
         
         # Equivalently, tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
         tape[begin_plus_i] = [0] * symbol_size
         for j in range(symbol_size):
             tape[begin_plus_i][j] = (is_right & (left_i[j] ^ center_i[j])) ^ (is_left & (right_i[j] ^ center_i[j])) ^ center_i[j]
-        
-        # Equivalently, tape_state[begin+i] = if_then_else(is_right, left_state[i], if_then_else(is_left, right_state[i], center_state[i]))
-        tape_state[begin_plus_i] = [0] * state_size
-        for j in range(state_size):
-            tape_state[begin_plus_i][j] = (is_right & (left_state_i[j] ^ center_state_i[j])) ^ (is_left & (right_state_i[j] ^ center_state_i[j])) ^ center_state_i[j]
 
 def compress(j):
     # We consider the cells in a 2**(j+1) - 1 = (1 << (j + 1)) - 1 radius around the origin
@@ -165,10 +135,10 @@ def compress(j):
     origin = len(tape)//2
     radius = ((1 << (j + 1)) - 1)
     # We find whether the head is to the right or to the left or to the origin.
-    is_right = tape_head[origin + 1]
+    is_right = head_markers[origin + 1]
     for i in range(origin + 2, origin + radius):
-        is_right ^= tape_head[i]
-    is_left = tape_head[origin] ^ is_right ^ 1
+        is_right ^= head_markers[i]
+    is_left = head_markers[origin] ^ is_right ^ 1
     # We do a 2**(j-1)-shift = (1 << (j - 1)) towards the direction where the head isn't.
     # In the case where the head is at the origin, we do nothing
     rotate(begin = origin - radius, end = origin + radius, amount = 1 << (j - 1), is_left=is_left, is_right=is_right)
@@ -189,19 +159,14 @@ code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
 #code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
-# The tape is separated in three parts:
-# - tape_symbol, which tells the symbol of the tape
-# - tape_head, which tells whether the head is here
-# - tape_state, which tells the state of the tape
+
 tape = encrypt([symbols[0]])
-tape_head = [i==len(tape)//2 for i in range(len(tape))]
-tape_state = [states[0]] * len(tape)
-
+# The head marker tells for each cell whether the head is here
+head_markers = [i==len(tape)//2 for i in range(len(tape))]
+current_state = states[0]
 stack = []
-
 number_steps = 0
-j = 0
-t0 = time()
+
 """
 import cProfile
 r = range(13)
@@ -209,10 +174,9 @@ cProfile.run("for j in r: phase(j)")
 exit()
 """
 
-
-while all(not(to_int(state)==len(table)-1 and head_here) for state, head_here in zip(decrypt(tape_state), decrypt(tape_head))): # While the head is not in the last state
-    #print("".join([str((v&2) >> 1) for v in tape]))#decrypt(tape)]))
-    #print("".join([str(symbol) for symbol in decrypt(tape)]))
+j = 0
+t0 = time()
+while not(to_int(decrypt(current_state))==len(table)-1):
     phase(j)
     j += 1
 print("".join([str(to_int(symbol)) for symbol in decrypt(tape)]))
