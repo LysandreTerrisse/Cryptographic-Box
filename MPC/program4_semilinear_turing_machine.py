@@ -37,13 +37,6 @@ def equal(a, b):
         res &= a[i] ^ b[i] ^ 1
     return res
 
-def if_then_else(cond, a, b):
-    """Takes a bit and two sequences (list) of same length"""
-    res = [0] * len(a)
-    for i in range(len(a)):
-        res[i] = b[i] ^ (cond & (a[i] ^ b[i]))
-    return res
-
 def step():
     """Simulate exactly one step of the original TM."""
     # This counts the number of steps and can be removed
@@ -145,9 +138,21 @@ def rotate(begin, end, amount, is_left, is_right):
     # We perform the right rotation if the head is to the left
     # We perform no rotation if the head is to the center
     for i in range(len(center)):
-        tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
+        # Equivalently, tape_head[begin+i] = if_then_else(is_right, left_head[i], if_then_else(is_left, right_head[i], center_head[i]))
         tape_head[begin+i] = (is_right & left_head[i]) ^ (is_left & right_head[i]) ^ ((is_right ^ is_left ^ 1) & center_head[i])
-        tape_state[begin+i] = if_then_else(is_right, left_state[i], if_then_else(is_left, right_state[i], center_state[i]))
+        # Strangely, the latter is slower, but only when not in a loop. Otherwise, it is faster:
+        # tape_head[begin+i] = (is_right & (left_head[i] ^ center_head[i])) ^ (is_left & (right_head[i] ^ center_head[i])) ^ center_head[i]
+        
+        # Equivalently, tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
+        tape[begin+i] = [0] * len(right[i])
+        for j in range(len(right[i])):
+            tape[begin+i][j] = (is_right & (left[i][j] ^ center[i][j])) ^ (is_left & (right[i][j] ^ center[i][j])) ^ center[i][j]
+        
+        # Equivalently, tape_state[begin+i] = if_then_else(is_right, left_state[i], if_then_else(is_left, right_state[i], center_state[i]))
+        tape_state[begin+i] = [0] * len(right_state[i])
+        for j in range(len(right_state[i])):
+            tape_state[begin+i][j] = (is_right & (left_state[i][j] ^ center_state[i][j])) ^ (is_left & (right_state[i][j] ^ center_state[i][j])) ^ center_state[i][j]
+        
 
 def compress(j):
     # The origin is at len(tape)//2
