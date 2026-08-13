@@ -144,9 +144,6 @@ class EncryptedBit:
     
     def __ror__(self, b):
         return self | b
-    
-    def bit_length(self):
-        return 1
 
 # This function outputs elements of the class EncryptedBit (or lists of them).
 def encrypt(x):
