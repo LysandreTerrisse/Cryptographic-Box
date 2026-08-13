@@ -1,8 +1,15 @@
 from mpc import encrypt, decrypt
 from time import time
 
+def normalize_code(code):
+    """Adds a _0RZ1RZ2RZ... at the end. The format comes from https://wiki.bbchallenge.org/wiki/Turing_machine#Standard_text_format"""
+    nb_nonhalting_states = code.count("_") + 1
+    nb_symbols = len(code.split("_")[0])//3
+    return code + "_" + "".join([f"{i}RZ" for i in range(nb_symbols)])
+
 def get_transition_table(code):
     """Convert the compact machine description into a transition table."""
+    code = normalize_code(code)
     nb_states = code.count("_") + 1
     nb_symbols = len(code.split("_")[0])//3
     # The states will be encoded in MSB, such as [0, 0, 0], [0, 0, 1], ..., [1, 1, 1].
@@ -15,7 +22,7 @@ def get_transition_table(code):
         row = []
         for i in range(0, len(state_code), 3):
             new_symbol, direction, new_state = state_code[i:i+3]
-            new_symbol, direction, new_state = int(new_symbol), direction=="R", ord(new_state) - ord("A")
+            new_symbol, direction, new_state = int(new_symbol), direction=="R", min(ord(new_state) - ord("A"), nb_states-1)
             new_symbol, new_state = symbols[new_symbol], states[new_state]
             row.append((new_symbol, direction, new_state))
         table.append(row)
@@ -147,11 +154,11 @@ def expand(j):
     origin = len(tape)//2
     rotate(begin = origin - ((1 << (j + 1)) - 1), end = origin + ((1 << (j + 1)) - 1), amount = 1 << (j - 1), is_left=was_right, is_right=was_left)
 
-#code = "1RB1LB_1LA1RC_0RC1LC" # BB(2)
-#code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD" # BB(3)
-code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
-#code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
+#code = "1RB1LB_1LA1RZ" # BB(2)
+#code = "1RB1RZ_1LB0RC_1LC1LA" # BB(3)
+#code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA" # BB(4)
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA" # BB(5)
+#code = "1RB2LB1RZ_2LA2RB1LB" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
 
@@ -163,13 +170,12 @@ stack = []
 number_steps = 0
 j = 0
 t0 = time()
-
+"""
 import cProfile
 r = range(13)
 cProfile.run("for j in r: ensure_capacity(j); phase(j)")
 exit()
-
-
+"""
 
 while not(to_int(decrypt(current_state))==len(table)-1):
     ensure_capacity(j)
