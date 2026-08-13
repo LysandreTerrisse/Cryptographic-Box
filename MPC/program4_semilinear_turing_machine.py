@@ -76,8 +76,8 @@ def step():
     head_markers[origin+1] = direction
 
 def ensure_capacity(j):
-    # COMPRESS(j) will consider a sphere of radius 2^(j+1) - 1.
-    # A sphere of radius r will have a length of 2*r + 1 = 2 * (2^(j+1) - 1) + 1 = 2^(j+2) - 2 + 1 = 2^(j+2) - 1 = (1 << (j + 2)) - 1
+    # COMPRESS(j) will consider a sphere of radius 2**(j+1) - 1.
+    # A sphere of radius r will have a length of 2*r + 1 = 2 * (2**(j+1) - 1) + 1 = 2**(j+2) - 2 + 1 = 2**(j+2) - 1 = (1 << (j + 2)) - 1
     # We therefore need at least this length
     required_length = (1 << (j + 2)) - 1
     if len(tape) < required_length:
@@ -90,7 +90,6 @@ def ensure_capacity(j):
         head_markers.extend([0] * (required_length - len(head_markers)))
 
 def phase(j):
-    ensure_capacity(j)
     if j==0:
         step()
     else:
@@ -115,19 +114,15 @@ def rotate(begin, end, amount, is_left, is_right):
     
     # We perform the left rotation if the head is to the right
     # We perform the right rotation if the head is to the left
-    # We perform no rotation if the head is to the center
+    # We perform no rotation if the head is at the center
     for i in range(len(center)):
-        # These temporary variables are in order to prevent a lot of list accesses and additions
-        begin_plus_i = begin + i
-        left_i, center_i, right_i = left[i], center[i], right[i]
-        
         # Equivalently, head_markers[begin+i] = if_then_else(is_right, left_head_markers[i], if_then_else(is_left, right_head_markers[i], center_head_markers[i]))
-        head_markers[begin_plus_i] = (is_right & (left_head_markers[i] ^ center_head_markers[i])) ^ (is_left & (right_head_markers[i] ^ center_head_markers[i])) ^ center_head_markers[i]
+        head_markers[begin + i] = (is_right & (left_head_markers[i] ^ center_head_markers[i])) ^ (is_left & (right_head_markers[i] ^ center_head_markers[i])) ^ center_head_markers[i]
         
         # Equivalently, tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
-        tape[begin_plus_i] = [0] * symbol_size
+        tape[begin + i] = [0] * symbol_size
         for j in range(symbol_size):
-            tape[begin_plus_i][j] = (is_right & (left_i[j] ^ center_i[j])) ^ (is_left & (right_i[j] ^ center_i[j])) ^ center_i[j]
+            tape[begin + i][j] = (is_right & (left[i][j] ^ center[i][j])) ^ (is_left & (right[i][j] ^ center[i][j])) ^ center[i][j]
 
 def compress(j):
     # We consider the cells in a 2**(j+1) - 1 = (1 << (j + 1)) - 1 radius around the origin
@@ -154,8 +149,8 @@ def expand(j):
 
 #code = "1RB1LB_1LA1RC_0RC1LC" # BB(2)
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD" # BB(3)
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
+code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
 #code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
@@ -166,17 +161,18 @@ head_markers = [i==len(tape)//2 for i in range(len(tape))]
 current_state = states[0]
 stack = []
 number_steps = 0
-
-"""
-import cProfile
-r = range(13)
-cProfile.run("for j in r: phase(j)")
-exit()
-"""
-
 j = 0
 t0 = time()
+
+import cProfile
+r = range(13)
+cProfile.run("for j in r: ensure_capacity(j); phase(j)")
+exit()
+
+
+
 while not(to_int(decrypt(current_state))==len(table)-1):
+    ensure_capacity(j)
     phase(j)
     j += 1
 print("".join([str(to_int(symbol)) for symbol in decrypt(tape)]))
