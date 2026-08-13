@@ -32,8 +32,8 @@ def to_int(x):
 
 def equal(a, b):
     """Takes two sequences (list) of same length"""
-    res = 1
-    for i in range(len(a)):
+    res = a[0] ^ b[0] ^ 1
+    for i in range(1, len(a)):
         res &= a[i] ^ b[i] ^ 1
     return res
 
@@ -95,9 +95,9 @@ def step():
 
 def ensure_capacity(j):
     # COMPRESS(j) will consider a sphere of radius 2^(j+1) - 1.
-    # A sphere of radius r will have a length of 2*r + 1 = 2 * (2^(j+1) - 1) + 1 = 2^(j+2) - 2 + 1 = 2^(j+2) - 1
+    # A sphere of radius r will have a length of 2*r + 1 = 2 * (2^(j+1) - 1) + 1 = 2^(j+2) - 2 + 1 = 2^(j+2) - 1 = (1 << (j + 2)) - 1
     # We therefore need at least this length
-    required_length = 2**(j+2) - 1
+    required_length = (1 << (j + 2)) - 1
     if len(tape) < required_length:
         # We add some amount to the left and to the right
         # Note that the origin is still at the center of the tape after the operation
@@ -134,38 +134,45 @@ def rotate(begin, end, amount, is_left, is_right):
     right_head  = center_head[-amount:] + center_head[:-amount]
     right_state = center_state[-amount:] + center_state[:-amount]
     
+    symbol_size = len(symbols[0])
+    state_size = len(states[0])
+    
     # We perform the left rotation if the head is to the right
     # We perform the right rotation if the head is to the left
     # We perform no rotation if the head is to the center
     for i in range(len(center)):
+        # These temporary variables are in order to prevent a lot of list accesses and additions
+        begin_plus_i = begin + i
+        left_i, center_i, right_i = left[i], center[i], right[i]
+        left_state_i, center_state_i, right_state_i = left_state[i], center_state[i], right_state[i]
+        
         # Equivalently, tape_head[begin+i] = if_then_else(is_right, left_head[i], if_then_else(is_left, right_head[i], center_head[i]))
-        tape_head[begin+i] = (is_right & left_head[i]) ^ (is_left & right_head[i]) ^ ((is_right ^ is_left ^ 1) & center_head[i])
-        # Strangely, the latter is slower, but only when not in a loop. Otherwise, it is faster:
-        # tape_head[begin+i] = (is_right & (left_head[i] ^ center_head[i])) ^ (is_left & (right_head[i] ^ center_head[i])) ^ center_head[i]
+        tape_head[begin_plus_i] = (is_right & (left_head[i] ^ center_head[i])) ^ (is_left & (right_head[i] ^ center_head[i])) ^ center_head[i]
         
         # Equivalently, tape[begin+i] = if_then_else(is_right, left[i], if_then_else(is_left, right[i], center[i]))
-        tape[begin+i] = [0] * len(right[i])
-        for j in range(len(right[i])):
-            tape[begin+i][j] = (is_right & (left[i][j] ^ center[i][j])) ^ (is_left & (right[i][j] ^ center[i][j])) ^ center[i][j]
+        tape[begin_plus_i] = [0] * symbol_size
+        for j in range(symbol_size):
+            tape[begin_plus_i][j] = (is_right & (left_i[j] ^ center_i[j])) ^ (is_left & (right_i[j] ^ center_i[j])) ^ center_i[j]
         
         # Equivalently, tape_state[begin+i] = if_then_else(is_right, left_state[i], if_then_else(is_left, right_state[i], center_state[i]))
-        tape_state[begin+i] = [0] * len(right_state[i])
-        for j in range(len(right_state[i])):
-            tape_state[begin+i][j] = (is_right & (left_state[i][j] ^ center_state[i][j])) ^ (is_left & (right_state[i][j] ^ center_state[i][j])) ^ center_state[i][j]
-        
+        tape_state[begin_plus_i] = [0] * state_size
+        for j in range(state_size):
+            tape_state[begin_plus_i][j] = (is_right & (left_state_i[j] ^ center_state_i[j])) ^ (is_left & (right_state_i[j] ^ center_state_i[j])) ^ center_state_i[j]
 
 def compress(j):
     # The origin is at len(tape)//2
     origin = len(tape)//2
     # We find whether the head is to the right or to the left or to the origin.
-    is_right = 0
-    for i in range(origin + 1, len(tape)):
+    # TODO: use a counter to keep track of the position of the head. This is the reason why the complexity is currently too big. This also enables us to NOT have a boolean indicating the position of the head at each timestep.
+    is_right = tape_head[origin + 1]
+    for i in range(origin + 2, len(tape)):#radius+1):
         is_right ^= tape_head[i]
     is_left = tape_head[origin] ^ is_right ^ 1
-    # We consider the cells in a 2^(j+1) - 1 radius around the origin
-    # We do a 2^(j-1)-shift towards the direction where the head isn't.
+    # We consider the cells in a 2**(j+1) - 1 = (1 << (j + 1)) - 1 radius around the origin
+    # We do a 2**(j-1)-shift = (1 << (j - 1)) towards the direction where the head isn't.
     # In the case where the head is at the origin, we do nothing
-    rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=is_left, is_right=is_right)
+    radius = ((1 << (j + 1)) - 1)
+    rotate(begin = origin - radius, end = origin + radius, amount = 1 << (j - 1), is_left=is_left, is_right=is_right)
     # We add a note to the stack that tells the position where the head was
     stack.append((is_left, is_right))
 
@@ -174,12 +181,12 @@ def expand(j):
     (was_left, was_right) = stack.pop()
     # We do the opposite direction
     origin = len(tape)//2
-    rotate(begin = origin - (2**(j+1) - 1), end = origin + (2**(j+1) - 1), amount = 2**(j-1), is_left=was_right, is_right=was_left)
+    rotate(begin = origin - ((1 << (j + 1)) - 1), end = origin + ((1 << (j + 1)) - 1), amount = 1 << (j - 1), is_left=was_right, is_right=was_left)
 
 #code = "1RB1LB_1LA1RC_0RC1LC" # BB(2)
 #code = "1RB1RD_1LB0RC_1LC1LA_0RD1LD" # BB(3)
-#code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
-code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
+code = "1RB1LB_1LA0LC_1RE1LD_1RD0RA_0RE1LE" # BB(4)
+#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RF0LA_0RF1LF" # BB(5)
 #code = "1RB2LB1RC_2LA2RB1LB_0RC1RC2RC" # BB(2, 3)
 states, symbols, table = get_transition_table(code)
 
@@ -187,7 +194,7 @@ states, symbols, table = get_transition_table(code)
 # - tape_symbol, which tells the symbol of the tape
 # - tape_head, which tells whether the head is here
 # - tape_state, which tells the state of the tape
-tape = encrypt([symbols[0]] * (2**7 - 1))
+tape = encrypt([symbols[0]])
 tape_head = [i==len(tape)//2 for i in range(len(tape))]
 tape_state = [states[0]] * len(tape)
 
@@ -198,7 +205,7 @@ j = 0
 t0 = time()
 """
 import cProfile
-r = range(10)
+r = range(13)
 cProfile.run("for j in r: phase(j)")
 exit()
 """
