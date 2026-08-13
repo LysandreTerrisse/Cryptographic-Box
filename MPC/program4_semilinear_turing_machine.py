@@ -46,13 +46,11 @@ def equal(a, b):
 
 def step():
     """Simulate exactly one step of the original TM."""
-    # This counts the number of steps and can be removed
-    global number_steps, current_state
+    global number_steps, current_state, halted
+    # We count the number of steps and print it (with the time) every 100 steps.
     number_steps += 1
     if number_steps%100==0:
-        print(number_steps)
-        t1 = time()
-        print(t1 - t0)
+        print(number_steps, time() - t0)
     # The head is at the origin
     origin = len(tape)//2
     current_symbol = tape[origin]
@@ -61,6 +59,10 @@ def step():
     state_matches = [equal(state, current_state) for state in states]
     symbol_matches = [equal(symbol, current_symbol) for symbol in symbols]
     
+    # We compute whether the machine is at an halting state
+    # We could also have done it at the previous step() but it would require one more call to equal()
+    halted |= state_matches[-1]
+    
     # The two following for loops are equivalent to:
     # new_symbol, direction, new_state = table[to_int(current_state)][to_int(current_symbol)]
     new_symbol, direction, new_state = [0]*len(symbols[0]), 0, [0]*len(states[0])
@@ -68,9 +70,7 @@ def step():
         for j, symbol in enumerate(symbols):
             match = state_matches[i] & symbol_matches[j]
             new_symbol_, direction_, new_state_ = table[i][j]
-            # The direction is easy to compute since it is a single bit
             direction ^= match & direction_
-            # For the new symbol and the new state, we need to make a loop
             for k in range(len(new_symbol)):
                 new_symbol[k] ^= match & new_symbol_[k]
             for k in range(len(new_state)):
@@ -78,9 +78,9 @@ def step():
     
     # We update the current state, the current symbol, and the head markers
     current_state, tape[origin] = new_state, new_symbol
-    head_markers[origin-1] = direction ^ 1
-    head_markers[origin] = 0
-    head_markers[origin+1] = direction
+    head_markers[origin-1] = (halted ^ 1) & (direction ^ 1) # if the machine didn't halt, then not(direction)
+    head_markers[origin] = halted                           # if the machine previously halted, we stay here
+    head_markers[origin+1] = (halted ^ 1) & direction       # if the machine didn't halt, then direction
 
 def ensure_capacity(j):
     # COMPRESS(j) will consider a sphere of radius 2**(j+1) - 1.
@@ -154,22 +154,23 @@ def expand(j):
     origin = len(tape)//2
     rotate(begin = origin - ((1 << (j + 1)) - 1), end = origin + ((1 << (j + 1)) - 1), amount = 1 << (j - 1), is_left=was_right, is_right=was_left)
 
-#code = "1RB1LB_1LA1RZ" # BB(2)
-#code = "1RB1RZ_1LB0RC_1LC1LA" # BB(3)
-#code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA" # BB(4)
-#code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA" # BB(5)
-#code = "1RB2LB1RZ_2LA2RB1LB" # BB(2, 3)
+# code = "1RB1LB_1LA1RZ" # BB(2)
+# code = "1RB2LB1RZ_2LA2RB1LB" # BB(2, 3)
+# code = "1RB1RZ_1LB0RC_1LC1LA" # BB(3)
+# code = "1RB1LB_1LA0LC_1RZ1LD_1RD0RA" # BB(4)
+code = "1RB1LC_1RC1RB_1RD0LE_1LA1LD_1RZ0LA" # BB(5)
 states, symbols, table = get_transition_table(code)
 
-
 tape = encrypt([symbols[0]])
-# The head marker tells for each cell whether the head is here
+
+# Head markers tell for each cell whether the head is here
 head_markers = [i==len(tape)//2 for i in range(len(tape))]
 current_state = states[0]
+halted = 0
 stack = []
 number_steps = 0
-j = 0
 t0 = time()
+
 """
 import cProfile
 r = range(13)
@@ -177,9 +178,11 @@ cProfile.run("for j in r: ensure_capacity(j); phase(j)")
 exit()
 """
 
-while not(to_int(decrypt(current_state))==len(table)-1):
+j = 0
+while not(decrypt(halted)):
     ensure_capacity(j)
     phase(j)
     j += 1
 print("".join([str(to_int(symbol)) for symbol in decrypt(tape)]))
-print(number_steps)
+print("".join([str(head_marker) for head_marker in decrypt(head_markers)]))
+print(number_steps, time() - t0)
